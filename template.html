@@ -63,6 +63,9 @@ label.tg{display:inline-flex;gap:4px;align-items:center;color:var(--muted);user-
 .chart .gl{stroke:var(--grid);stroke-width:1}
 .chart .guide{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;opacity:0}
 .legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted);margin-top:4px}
+.legend button{background:none;border:0;border-radius:6px;padding:2px 5px;margin:0 -5px;font:inherit;font-size:12px;color:var(--muted);cursor:pointer}
+.legend button:hover{background:var(--grid)}
+.legend button.off{opacity:.45;text-decoration:line-through}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 .empty{color:var(--muted);font-size:13px;padding:24px 0;text-align:center}
 .tip{position:fixed;z-index:50;pointer-events:none;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:7px 9px;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.18);display:none;max-width:250px}
@@ -370,20 +373,48 @@ function niceTicks(lo, hi, count) {
 const col = c => `var(--${c})`;
 
 /* chart(host, {x, time, h, series:[{type:line|band|bar|stack|pts, v|lo,hi|parts, c, label, f}], hl, yb, marks, zero, yf, yfix}) */
+const HID = store.get('hidden', {}); // ausgeblendete Legenden-Einträge je Diagramm
 function chart(host, o) {
   if (typeof host === 'string') host = document.getElementById(host);
   if (!host) return;
+  const hid = new Set(HID[host.id] || []);
+  const series = o.series.filter(s => !hid.has(s.grp || s.label))
+    .map(s => s.type === 'stack' ? Object.assign({}, s, {parts: s.parts.filter(p => !hid.has(p.label))}) : s);
+  const showHol = state.hol && !hid.has('Ferien'), showExam = state.exam && !hid.has('Klausur');
+  const marks = hid.has('Strukturbruch') ? [] : (o.marks || []);
+  const legendHtml = () => {
+    if (o.noLegend) return '';
+    const leg = [], seen = new Set();
+    const add = (c, key, toggle = true) => { if (!seen.has(key)) { seen.add(key); leg.push([c, key, toggle]); } };
+    for (const s of o.series) {
+      if (s.type === 'stack') s.parts.forEach(p => add(p.c, p.label));
+      else if ((s.grp || s.label) && !s.noLeg) add(s.legC || s.c || 'c1', s.grp || s.label);
+    }
+    (o.extraLeg || []).forEach(([c, l]) => add(c, l, false));
+    if ((o.marks || []).some(m => o.x.includes(m.d))) add('text', 'Strukturbruch');
+    if (o.time && state.hol && o.x.some(d => HOLNAME[d])) add('hol', 'Ferien');
+    if (o.time && state.exam && o.x.some(d => EXAMS.has(d))) add('exam', 'Klausur');
+    if (!leg.length) return '';
+    return `<div class="legend">${leg.map(([c, l, t]) => t
+      ? `<button type="button" class="${hid.has(l) ? 'off' : ''}" data-k="${esc(l)}" title="Antippen: ein-/ausblenden"><i style="background:${col(c)}"></i>${esc(l)}</button>`
+      : `<span><i style="background:${col(c)}"></i>${esc(l)}</span>`).join('')}</div>`;
+  };
+  const bindLegend = () => host.querySelectorAll('.legend button').forEach(b => b.onclick = () => {
+    const k = b.dataset.k, set = new Set(HID[host.id] || []);
+    set.has(k) ? set.delete(k) : set.add(k);
+    HID[host.id] = [...set]; store.set('hidden', HID); hideTip(); chart(host, o);
+  });
   const W = Math.max(260, Math.floor(host.clientWidth || host.parentElement.clientWidth)), H = o.h || 210;
   const M = {l: o.ml || 40, r: 10, t: 10, b: 22}, pw = W - M.l - M.r, ph = H - M.t - M.b, n = o.x.length;
   const step = pw / Math.max(n, 1), X = i => M.l + (i + 0.5) * step;
   let lo = Infinity, hi = -Infinity;
   const up = v => { if (v != null && isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } };
-  for (const s of o.series) {
+  for (const s of series) {
     if (s.type === 'band') { s.lo.forEach(up); s.hi.forEach(up); }
     else if (s.type === 'stack') { for (let i = 0; i < n; i++) up(s.parts.reduce((a, p) => a + (p.v[i] || 0), 0)); up(0); }
     else { s.v.forEach(up); if (s.type === 'bar') up(0); }
   }
-  if (!isFinite(lo)) { host.innerHTML = '<div class="empty">Keine Daten im gewählten Zeitraum</div>'; return; }
+  if (!isFinite(lo)) { host.innerHTML = `<div class="empty">${hid.size ? 'Alles ausgeblendet – unten in der Legende wieder einblenden' : 'Keine Daten im gewählten Zeitraum'}</div>` + (hid.size ? legendHtml() : ''); bindLegend(); return; }
   (o.hl || []).forEach(h => up(h.y)); (o.yb || []).forEach(b => { up(b.y0); up(b.y1); });
   if (o.zero) up(0);
   if (o.yfix) { lo = o.yfix[0]; hi = o.yfix[1]; }
@@ -395,7 +426,7 @@ function chart(host, o) {
   for (const t of nt.ticks) g.push(`<line class="gl" x1="${M.l}" x2="${W - M.r}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}"/><text class="ax" x="${M.l - 5}" y="${(Y(t) + 3.5).toFixed(1)}" text-anchor="end">${yf(t)}</text>`);
   // Ferien und Klausuren
   if (o.time) {
-    if (state.hol) {
+    if (showHol) {
       let s0 = -1;
       for (let i = 0; i <= n; i++) {
         const on = i < n && HOLNAME[o.x[i]];
@@ -403,11 +434,11 @@ function chart(host, o) {
         if (!on && s0 >= 0) { g.push(`<rect x="${(X(s0) - step / 2).toFixed(1)}" y="${M.t}" width="${((i - s0) * step).toFixed(1)}" height="${ph}" style="fill:var(--hol)"/>`); s0 = -1; }
       }
     }
-    if (state.exam) o.x.forEach((d, i) => { if (EXAMS.has(d)) g.push(`<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${M.t}" y2="${M.t + ph}" style="stroke:var(--exam);stroke-width:1.2;stroke-dasharray:3 2;opacity:.8"/>`); });
+    if (showExam) o.x.forEach((d, i) => { if (EXAMS.has(d)) g.push(`<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${M.t}" y2="${M.t + ph}" style="stroke:var(--exam);stroke-width:1.2;stroke-dasharray:3 2;opacity:.8"/>`); });
   }
   for (const b of o.yb || []) g.push(`<rect x="${M.l}" width="${pw}" y="${Y(b.y1).toFixed(1)}" height="${Math.max(0, Y(b.y0) - Y(b.y1)).toFixed(1)}" style="fill:${b.c || 'var(--band)'}"/>`);
   const bw = Math.max(1, Math.min(28, step * 0.78));
-  for (const s of o.series) {
+  for (const s of series) {
     const c = col(s.c || 'c1');
     if (s.type === 'band') {
       let seg = [];
@@ -428,7 +459,7 @@ function chart(host, o) {
     }
   }
   for (const h of o.hl || []) g.push(`<line x1="${M.l}" x2="${W - M.r}" y1="${Y(h.y).toFixed(1)}" y2="${Y(h.y).toFixed(1)}" style="stroke:${col(h.c || 'muted')};stroke-width:1.2;${h.dash !== false ? 'stroke-dasharray:5 3' : ''}"/>` + (h.l ? `<text class="ax" x="${W - M.r - 2}" y="${(Y(h.y) - 4).toFixed(1)}" text-anchor="end" style="fill:${col(h.c || 'muted')}">${esc(h.l)}</text>` : ''));
-  for (const mk of o.marks || []) { const i = o.x.indexOf(mk.d); if (i < 0) continue; g.push(`<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${M.t}" y2="${M.t + ph}" style="stroke:${col(mk.c || 'bad')};stroke-width:1.5"/><path d="M${(X(i) - 5).toFixed(1)},${M.t} l5,7 l5,-7z" style="fill:${col(mk.c || 'bad')}"/>`); }
+  for (const mk of marks) { const i = o.x.indexOf(mk.d); if (i < 0) continue; g.push(`<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${M.t}" y2="${M.t + ph}" style="stroke:${col(mk.c || 'text')};stroke-width:1.5;opacity:.75"/><path d="M${(X(i) - 5).toFixed(1)},${M.t} l5,7 l5,-7z" style="fill:${col(mk.c || 'text')}"/>`); }
   // x-Achse
   const lab = [];
   if (o.time) {
@@ -440,10 +471,8 @@ function chart(host, o) {
   } else { const k = Math.max(1, Math.ceil(n / (pw / (o.xw || 40)))); for (let i = 0; i < n; i += k) lab.push([i, o.xl ? o.xl[i] : o.x[i]]); }
   for (const [i, t] of lab) g.push(`<text class="ax" x="${X(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(t)}</text>`);
   host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${g.join('')}<line class="guide" x1="0" x2="0" y1="${M.t}" y2="${M.t + ph}"/><rect class="hit" x="${M.l}" y="0" width="${pw}" height="${H}" style="fill:transparent"/></svg>`;
-  const leg = o.series.filter(s => (s.label || s.type === 'stack') && !s.noLeg).flatMap(s => s.type === 'stack' ? s.parts.map(p => [p.c, p.label]) : [[s.legC || s.c || 'c1', s.label]]);
-  if (o.extraLeg) leg.push(...o.extraLeg);
-  if (o.time && (state.hol || state.exam)) { if (state.hol && o.x.some(d => HOLNAME[d])) leg.push(['hol', 'Ferien']); if (state.exam && o.x.some(d => EXAMS.has(d))) leg.push(['exam', 'Klausur']); }
-  if (leg.length && !o.noLegend) host.insertAdjacentHTML('beforeend', `<div class="legend">${leg.map(([c, l]) => `<span><i style="background:${col(c)}"></i>${esc(l)}</span>`).join('')}</div>`);
+  host.insertAdjacentHTML('beforeend', legendHtml());
+  bindLegend();
   // Tooltip
   const svg = host.querySelector('svg'), guide = svg.querySelector('.guide'), hit = svg.querySelector('.hit');
   const move = e => {
@@ -455,14 +484,14 @@ function chart(host, o) {
     else if (o.time) { const d = o.x[i]; title = `${WD[wday(d)]}, ${fdate(d, true)}` + (HOLNAME[d] ? ` · ${HOLNAME[d]}` : '') + (EXAMS.has(d) ? ' · Klausur' : ''); }
     else title = o.xl ? o.xl[i] : o.x[i];
     const rows = [];
-    for (const s of o.series) {
+    for (const s of series) {
       if (s.noTip) continue;
       const f = s.f || yf;
       if (s.type === 'stack') { for (const p of s.parts) if (p.v[i]) rows.push([p.c, p.label, (p.f || f)(p.v[i])]); }
       else if (s.type === 'band') { if (s.label && s.lo[i] != null) rows.push([s.c || 'c1', s.label, f(s.lo[i]) + ' – ' + f(s.hi[i])]); }
       else if (s.label && s.v[i] != null) rows.push([s.cf && s.type !== 'bar' ? s.cf(i) : s.c || 'c1', s.label, f(s.v[i])]);
     }
-    for (const mk of o.marks || []) if (mk.d === o.x[i]) rows.push([mk.c || 'bad', 'Strukturbruch', mk.l || '']);
+    for (const mk of marks) if (mk.d === o.x[i]) rows.push([mk.c || 'text', 'Strukturbruch', mk.l || '']);
     if (o.extraTip) { const x = o.extraTip(i); if (x) rows.push(...x); }
     showTip(`<b>${esc(title)}</b>` + (rows.length ? rows.map(([c, l, v]) => `<div class="r"><span><i style="background:${col(c)}"></i>${esc(l)}</span><span>${v}</span></div>`).join('') : '<div class="mut">keine Werte</div>'), e.clientX, e.clientY);
   };
@@ -624,11 +653,11 @@ function bandChart(id, k, label, unit, extraSeries = [], cpKey) {
   const z = v.map((val, j) => val == null || m[j] == null ? null : (val - m[j]) / sd[j]);
   const f = vv => fmt(vv) + ' ' + unit;
   chart(id, {x, time: true, h: 220, series: [
-    {type: 'band', lo: m.map((mm, j) => mm == null ? null : mm - sd[j]), hi: m.map((mm, j) => mm == null ? null : mm + sd[j]), c: 'c1', label: 'Normalbereich (±1 SD)', f, legC: 'c1'},
-    {type: 'line', v: m, c: 'c1', w: 1, dash: '4 3', op: .7, label: 'Mittel 28 T', f},
+    {type: 'band', lo: m.map((mm, j) => mm == null ? null : mm - sd[j]), hi: m.map((mm, j) => mm == null ? null : mm + sd[j]), c: 'c6', op: .22, label: 'Normalbereich (±1 SD)', f},
+    {type: 'line', v: m, c: 'c6', w: 1.6, dash: '5 3', label: 'Mittel 28 Tage', f},
     ...extraSeries.map(e => Object.assign({f}, e(rg))),
-    {type: 'line', v, c: 'c6', w: 1, op: .45, noTip: true},
-    {type: 'pts', v, c: 'c1', r: 2.3, cf: j => z[j] != null && Math.abs(z[j]) >= 2 ? 'bad' : 'c1', label, f: vv => f(vv)},
+    {type: 'line', v, c: 'c1', w: 1, op: .3, noTip: true, noLeg: true, grp: label},
+    {type: 'pts', v, c: 'c1', r: 2.4, cf: j => z[j] != null && Math.abs(z[j]) >= 2 ? 'bad' : 'c1', label, f: vv => f(vv)},
   ], marks: (RAW.models.cp[cpKey || k] || []).map(c => ({d: c.d, l: `${fmt(c.before)} → ${fmt(c.after)}`})),
     extraLeg: [['bad', 'auffällig (≥ 2 SD)']],
     extraTip: j => z[j] != null ? [['muted', 'z-Wert', sgn(z[j], 1)]] : null});
@@ -670,8 +699,8 @@ function pageErholung(el) {
       ${kpi('Frühwarn-Tage', fmt(sl(FLAGS, rg).filter(f => f.length >= 2).length), '≥ 2 Werte gleichzeitig auffällig')}
     </div>
     <div class="grid" style="margin-top:12px">
-      ${card('HRV (nächtlicher Mittelwert)', div('chHrv'), 'Band = dein Mittel ± 1 Standardabweichung der 28 Tage davor. Gestrichelt grün: Garmins Normalbereich. Rote Markierung oben = erkannter Strukturbruch (dauerhafte Niveauänderung).')}
-      ${card('Ruhepuls', div('chRhr'), 'Rote Punkte: Abweichung ≥ 2 SD vom persönlichen Normalbereich.')}
+      ${card('HRV (nächtlicher Mittelwert)', div('chHrv'), 'Blaue Punkte = deine Nächte, rot = auffällig. Graues Band = dein Mittel ± 1 Standardabweichung der 28 Tage davor, grau gestrichelt = dieses Mittel. Grün gestrichelt = Garmins Normalbereich. Dunkle Linie mit Dreieck = Strukturbruch (dauerhafte Niveauänderung). Legende antippen blendet Elemente aus und ein.')}
+      ${card('Ruhepuls', div('chRhr'), 'Gleicher Aufbau wie bei der HRV. Rote Punkte: Abweichung ≥ 2 SD vom persönlichen Normalbereich.')}
       <div class="grid c2">
         ${card('Erholungskurve HRV nach harten Tagen', div('chEsH'), es ? `Harte Tage = oberste 20 % der Trainingstage (TRIMP ≥ ${fmt(es.q)}), n = ${es.nHard}. Nacht 0 = direkt nach dem Training. Kurve = Abweichung von deinem 28-Tage-Mittel, Band = 95-%-Intervall.` : '')}
         ${card('Erholungskurve Ruhepuls nach harten Tagen', div('chEsR'), 'Liegt das Band komplett über/unter der Nulllinie, ist der Effekt statistisch belastbar.')}
@@ -679,7 +708,7 @@ function pageErholung(el) {
       ${card('Auffällige Tage', anomalies.length ? `<div class="tw"><table><tr><th>Tag</th><th style="text-align:left">Werte</th></tr>${anomalies.join('')}</table></div>` : '<p class="note">Keine auffälligen Tage im Zeitraum.</p>', 'Neueste zuerst, max. 30. Frühwarnung = mind. zwei Werte gleichzeitig ungünstig (Ruhepuls ≥ +1,5 SD, HRV ≤ −1,5 SD, Atemfrequenz ≥ +1,5 SD, Hauttemperatur falls vorhanden).')}
       ${card('Strukturbrüche', cps.length ? `<div class="tw"><table><tr><th>ab Woche</th><th>Wert</th><th>Niveau vorher → nachher</th><th>Stärke (t)</th></tr>${cps.join('')}</table></div>` : '<p class="note">Keine dauerhaften Niveauwechsel erkannt.</p>', 'Gesucht mit binärer Segmentierung auf Wochenmitteln (mind. 4 Wochen je Abschnitt, t > 4,5). Über die gesamte Historie berechnet.')}
     </div>`;
-  bandChart('chHrv', 'hrv', 'HRV', 'ms', [rg2 => ({type: 'line', v: sl(ser('hrvLo'), rg2), c: 'good', w: 1, dash: '2 3', label: 'Garmin-Normal unten'}), rg2 => ({type: 'line', v: sl(ser('hrvHi'), rg2), c: 'good', w: 1, dash: '2 3', label: 'Garmin-Normal oben', noLeg: true})]);
+  bandChart('chHrv', 'hrv', 'HRV', 'ms', [rg2 => ({type: 'line', v: sl(ser('hrvLo'), rg2), c: 'good', w: 1.3, dash: '2 3', label: 'Garmin unten', grp: 'Garmin-Normalbereich'}), rg2 => ({type: 'line', v: sl(ser('hrvHi'), rg2), c: 'good', w: 1.3, dash: '2 3', label: 'Garmin oben', grp: 'Garmin-Normalbereich'})]);
   bandChart('chRhr', 'rhr', 'Ruhepuls', 'bpm');
   const esChart = (id, e, unit) => { if (!e) { $('#' + id).innerHTML = '<div class="empty">Zu wenige Trainingstage</div>'; return; }
     const lab = e.res.map((_, k) => 'Nacht ' + k);
