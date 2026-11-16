@@ -172,6 +172,7 @@ const state = {
   range: store.get('range', '6m'), from: store.get('from', null), to: store.get('to', null),
   hol: store.get('hol', true), exam: store.get('exam', true),
   w: Object.assign({}, DEFAULT_W, store.get('weights', {})),
+  ex: store.get('ex', null),
   cx: store.get('cx', 'trimp'), cy: store.get('cy', 'hrv'), lag: store.get('lag', 1), season: store.get('season', 'hrv'),
 };
 
@@ -181,6 +182,8 @@ D.forEach((d, i) => IDX[d.d] = i);
 const W_BY_DATE = {};
 for (const w of RAW.weights) W_BY_DATE[w.d] = w;
 D.forEach(d => { const w = W_BY_DATE[d.d]; if (w) { d.kg = w.kg; d.fat = w.fat; d.muscle = w.muscle; } d.wend = wday(d.d) >= 5 ? 1 : 0; d.hol = d.hol ? 1 : 0; });
+/* Krafttraining: bewegte Last (kg × Wdh.) pro Tag */
+for (const a of RAW.acts) if (a.ex && IDX[a.d] != null) { const d = D[IDX[a.d]]; d.vol = (d.vol || 0) + a.ex.reduce((s, e) => s + (e[2] || 0) * (e[3] || 0), 0); }
 const HOLNAME = {};
 for (const h of RAW.holidays) {
   let a = h.from, b = h.to;
@@ -280,6 +283,7 @@ const MET = {
   tsb: {l: 'Form (TSB)', d: 0, good: 1},
   debt: {l: 'Schlafschuld 14 T', u: 'h', d: 1, good: -1, f: hdur},
   hol: {l: 'Ferien (0/1)', good: 0},
+  vol: {l: 'Kraftvolumen', u: 'kg', good: 0},
 };
 const metVal = (k, i) => {
   if (i < 0 || i >= N) return null;
@@ -517,7 +521,8 @@ const ICON = {
   heute: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   erholung: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/><path d="M3 12h4l2-3 3 6 2-3h7"/>',
   schlaf: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
-  training: '<path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/>',
+  training: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+  kraft: '<path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/>',
   koerper: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 9a5 5 0 0 1 8 0l-3 3"/>',
   zusammenhaenge: '<circle cx="6" cy="17" r="1.6"/><circle cx="10" cy="12" r="1.6"/><circle cx="14" cy="14" r="1.6"/><circle cx="18" cy="7" r="1.6"/><path d="M3 21h18M3 3v18"/>',
   prognosen: '<path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/>',
@@ -528,6 +533,7 @@ const PAGES = [
   {id: 'erholung', t: 'Erholung', r: pageErholung},
   {id: 'schlaf', t: 'Schlaf', r: pageSchlaf},
   {id: 'training', t: 'Training', r: pageTraining},
+  {id: 'kraft', t: 'Kraft', r: pageKraft},
   {id: 'koerper', t: 'Körper', r: pageKoerper},
   {id: 'zusammenhaenge', t: 'Zusammenhänge', s: 'Muster', r: pageZusammen},
   {id: 'prognosen', t: 'Prognosen', r: pagePrognosen},
@@ -785,6 +791,139 @@ function pageTraining(el) {
   if (econ.length >= 3) chart('chEcon', {x: econ.map(e => e.a.d), xl: econ.map(e => fdate(e.a.d)), xw: 60, h: 180, tt: j => fdate(econ[j].a.d, true), series: [{type: 'line', v: econ.map(e => e.mpb), c: 'c3', w: 2, dots: true, r: 3.5, label: 'm/Schlag', f: v => fmt(v, 2)}]});
 }
 
+/* ---------------- Kraft */
+const EX_NAME = {
+  BENCH_PRESS: 'Bankdrücken', BARBELL_BENCH_PRESS: 'Bankdrücken (LH)', DUMBBELL_BENCH_PRESS: 'Bankdrücken (KH)', INCLINE_BARBELL_BENCH_PRESS: 'Schrägbankdrücken (LH)',
+  INCLINE_DUMBBELL_BENCH_PRESS: 'Schrägbankdrücken (KH)', KETTLEBELL_CHEST_PRESS: 'Brustpresse', CHEST_PRESS: 'Brustpresse',
+  ROW: 'Rudern', SEATED_CABLE_ROW: 'Rudern am Kabel', T_BAR_ROW: 'T-Bar-Rudern', BENT_OVER_ROW: 'Vorgebeugtes Rudern', ONE_ARM_DUMBBELL_ROW: 'Einarmiges KH-Rudern',
+  PULL_UP: 'Klimmzug', LAT_PULLDOWN: 'Latzug', CHIN_UP: 'Klimmzug (Untergriff)', SHOULDER_PRESS: 'Schulterdrücken', LATERAL_RAISE: 'Seitheben',
+  CURL: 'Bizepscurls', DUMBBELL_HAMMER_CURL: 'Hammercurls', ONE_ARM_PREACHER_CURL: 'Scottcurls (einarmig)', BARBELL_CURL: 'Langhantelcurls',
+  TRICEPS_EXTENSION: 'Trizepsstrecken', TRICEPS_PRESSDOWN: 'Trizepsdrücken am Kabel', TRICEPS_PRESS: 'Trizepsdrücken', DUMBBELL_KICKBACK: 'Kickbacks', WEIGHTED_DIP: 'Dips',
+  FLYE: 'Flys', DUMBBELL_FLYE: 'Kurzhantel-Flys', CABLE_CROSSOVER: 'Kabelzug-Flys', INCLINE_REVERSE_FLYE: 'Reverse Flys',
+  SQUAT: 'Kniebeuge', BARBELL_BACK_SQUAT: 'Kniebeuge (LH)', LEG_PRESS: 'Beinpresse', DEADLIFT: 'Kreuzheben', LUNGE: 'Ausfallschritte',
+  LEG_CURL: 'Beinbeuger', WEIGHTED_LEG_CURL: 'Beinbeuger (Maschine)', WEIGHTED_LEG_EXTENSIONS: 'Beinstrecker', LEG_EXTENSION: 'Beinstrecker',
+  CALF_RAISE: 'Wadenheben', WEIGHTED_STANDING_CALF_RAISE: 'Wadenheben stehend', SHRUG: 'Shrugs', INCLINE_DUMBBELL_SHRUG: 'Shrugs (schräg, KH)',
+  HYPEREXTENSION: 'Hyperextensions', LEG_ADDUCTION: 'Adduktoren', LEG_ABDUCTION: 'Abduktoren', PUSH_UP: 'Liegestütz',
+  CORE: 'Rumpf', SIDE_ABS_LEG_LIFT: 'Seitliches Beinheben', CRUNCH: 'Crunches', PLANK: 'Unterarmstütz', UNKNOWN: 'Nicht erkannt', RUN_OR_WALK: 'Laufen/Gehen', RUN: 'Laufen',
+};
+const exKey = e => e[1] || e[0];
+const exName = k => EX_NAME[k] || k.toLowerCase().replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
+const MUSCLES = ['Brust', 'Rücken', 'Schultern', 'Bizeps', 'Trizeps', 'Beine vorn', 'Beinbeuger/Gesäß', 'Waden', 'Bauch'];
+const MUSCLE_C = ['c1', 'c3', 'c4', 'c2', 'c5', 'z2', 'z4', 'c6', 'z1'];
+function muscleOf(e) { // [Gruppe, Anteil]: Hauptmuskel 1, Hilfsmuskel 0,5
+  const n = (e[1] + ' ' + e[0]).toUpperCase();
+  const has = (...w) => w.some(x => n.includes(x));
+  if (has('UNKNOWN', 'RUN', 'CARDIO', 'WALK')) return [];
+  if (has('LEG_EXTENSION')) return [['Beine vorn', 1]];
+  if (has('LEG_CURL', 'DEADLIFT', 'HIP_RAISE', 'GOOD_MORNING', 'GLUTE', 'ABDUCTION')) return [['Beinbeuger/Gesäß', 1]];
+  if (has('HYPEREXTENSION')) return [['Beinbeuger/Gesäß', 1], ['Rücken', .5]];
+  if (has('LEG_PRESS', 'SQUAT', 'LUNGE', 'STEP_UP')) return [['Beine vorn', 1], ['Beinbeuger/Gesäß', .5]];
+  if (has('ADDUCTION')) return [['Beine vorn', 1]];
+  if (has('CALF')) return [['Waden', 1]];
+  if (has('REVERSE_FLY', 'FACE_PULL', 'REAR_DELT')) return [['Schultern', 1], ['Rücken', .5]];
+  if (has('DIP')) return [['Trizeps', 1], ['Brust', .5]];
+  if (has('BENCH_PRESS', 'CHEST_PRESS', 'PUSH_UP')) return [['Brust', 1], ['Trizeps', .5], ['Schultern', .5]];
+  if (has('FLYE', 'CROSSOVER', 'PEC_DECK')) return [['Brust', 1]];
+  if (has('ROW', 'PULL_UP', 'PULLDOWN', 'CHIN')) return [['Rücken', 1], ['Bizeps', .5]];
+  if (has('SHRUG')) return [['Rücken', 1]];
+  if (has('SHOULDER_PRESS', 'OVERHEAD_PRESS', 'MILITARY')) return [['Schultern', 1], ['Trizeps', .5]];
+  if (has('LATERAL_RAISE', 'FRONT_RAISE')) return [['Schultern', 1]];
+  if (has('CURL')) return [['Bizeps', 1]];
+  if (has('TRICEPS', 'KICKBACK', 'SKULL')) return [['Trizeps', 1]];
+  if (has('CORE', 'CRUNCH', 'PLANK', 'SIT_UP', 'ABS', 'LEG_RAISE', 'CHOP', 'TWIST')) return [['Bauch', 1]];
+  return [];
+}
+const e1rm = (kg, reps) => kg > 0 && reps > 0 && reps <= 12 ? kg * (1 + reps / 30) : null; // Epley
+const STR_SESS = RAW.acts.filter(a => a.ex && a.ex.length);
+function pageKraft(el) {
+  const rg = rangeIdx(), from = D[rg[0]].d, to = D[rg[1]].d;
+  const sess = STR_SESS.filter(a => a.d >= from && a.d <= to);
+  if (!STR_SESS.length) { el.innerHTML = card('Kraft', '<p class="note">Keine Krafttrainings mit Satzdaten gefunden.</p>'); return; }
+  // Wochen
+  const weeks = [];
+  for (let d = addDays(from, -wday(from)); d <= to; d = addDays(d, 7)) weeks.push(d);
+  const wIdx = {}; weeks.forEach((w, i) => wIdx[w] = i);
+  const setsW = MUSCLES.map(() => weeks.map(() => 0)), volW = weeks.map(() => 0);
+  let nSets = 0, nUnknown = 0, vol = 0;
+  // Übungen
+  const ex = {};
+  for (const a of sess) {
+    const wi = wIdx[addDays(a.d, -wday(a.d))];
+    const per = {};
+    for (const e of a.ex) {
+      nSets++;
+      const m = muscleOf(e);
+      if (!m.length) nUnknown++;
+      for (const [g, f] of m) setsW[MUSCLES.indexOf(g)][wi] += f;
+      const v = (e[2] || 0) * (e[3] || 0); vol += v; volW[wi] += v;
+      if (!m.length) continue;
+      const k = exKey(e), p = per[k] || (per[k] = {sets: 0, vol: 0, best: null, top: 0, topReps: 0, reps: 0, bw: !e[3]});
+      p.sets++; p.vol += v; p.reps = Math.max(p.reps, e[2] || 0);
+      const r = e1rm(e[3], e[2]); if (r != null && (p.best == null || r > p.best)) p.best = r;
+      if ((e[3] || 0) > p.top || ((e[3] || 0) === p.top && (e[2] || 0) > p.topReps)) { p.top = e[3] || 0; p.topReps = e[2] || 0; }
+      if (e[3]) p.bw = false;
+    }
+    for (const [k, p] of Object.entries(per)) (ex[k] = ex[k] || []).push(Object.assign({d: a.d}, p));
+  }
+  const nW = Math.max(1, (rg[1] - rg[0] + 1) / 7);
+  const last4 = weeks.slice(-4).length || 1;
+  // Fortschritt je Übung: Trend der Bestleistung pro Einheit (e1RM, bei Körpergewicht Wiederholungen)
+  const rows = Object.entries(ex).filter(([, s]) => s.length >= 3).map(([k, s]) => {
+    const metric = s.some(x => x.best != null) ? 'e1rm' : 'reps';
+    const pts = s.map(x => [dayDiff(from, x.d), metric === 'e1rm' ? x.best : x.reps]).filter(p => p[1] != null && p[1] > 0);
+    const fit = pts.length >= 3 ? pearson(pts.map(p => p[0]), pts.map(p => p[1])) : {};
+    const m = meanOf(pts.map(p => p[1]));
+    const perMonth = fit.b != null && m ? fit.b * 30.4 / m * 100 : null;
+    const lastV = pts.length ? pts[pts.length - 1][1] : null;
+    const recent = pts.slice(-3).map(p => p[1]), before = pts.slice(-8, -3).map(p => p[1]);
+    const plateau = before.length >= 2 && Math.max(...recent) <= Math.max(...before) * 1.01;
+    const status = perMonth == null ? ['→', 'mut', 'zu wenig Daten'] : perMonth <= -2 ? ['↓', 'bad', 'Rückgang'] : plateau && perMonth < 1 ? ['→', 'warn', 'Plateau'] : perMonth >= 1 ? ['↑', 'good', 'Fortschritt'] : ['→', 'mut', 'stabil'];
+    return {k, s, metric, perMonth, lastV, best: Math.max(...pts.map(p => p[1])), status, n: s.length, last: s[s.length - 1].d};
+  }).sort((a, b) => b.n - a.n);
+  if (!rows.some(r => r.k === state.ex)) state.ex = rows[0]?.k;
+  const prog = rows.filter(r => r.status[2] === 'Fortschritt').length, plat = rows.filter(r => r.status[2] === 'Plateau').length;
+  // Muskelgruppen-Tabelle
+  const mrows = MUSCLES.map((g, gi) => {
+    const avg = setsW[gi].reduce((a, b) => a + b, 0) / nW, rec = setsW[gi].slice(-4).reduce((a, b) => a + b, 0) / last4;
+    const cls = rec < 6 ? 'bad' : rec < 10 ? 'warn' : rec <= 20 ? 'good' : 'warn';
+    const lab = rec < 6 ? 'sehr wenig' : rec < 10 ? 'unter 10' : rec <= 20 ? 'im Bereich' : 'sehr viel';
+    const w = Math.min(100, rec / 25 * 100);
+    return `<tr><td>${g}</td><td>${fmt(avg, 1)}</td><td><b>${fmt(rec, 1)}</b></td><td style="width:38%"><div class="bar"><span style="left:40%;width:40%;background:var(--goodbg)"></span><span style="left:0;width:${w}%;background:var(--${MUSCLE_C[gi]});opacity:.85;height:4px;top:2px"></span></div></td><td class="${cls}">${lab}</td></tr>`;
+  }).join('');
+  const sel = rows.find(r => r.k === state.ex);
+  el.innerHTML = `
+    <div class="kpis k4">
+      ${kpi('Einheiten / Woche', fmt(sess.length / nW, 1), `${sess.length} im Zeitraum`)}
+      ${kpi('Sätze / Woche', fmt(nSets / nW, 0), `Ø ${fmt(meanOf(sess.map(a => a.ex.length)))} pro Einheit`)}
+      ${kpi('Volumen / Woche', fmt(vol / nW / 1000, 1) + ' <small>t</small>', 'Summe kg × Wiederholungen')}
+      ${kpi('Übungen mit Fortschritt', `${prog} <small>von ${rows.length}</small>`, plat ? `${plat} auf Plateau` : 'kein Plateau', prog >= rows.length / 2 ? 'good' : '')}
+    </div>
+    <div class="grid" style="margin-top:12px">
+      ${card('Sätze pro Muskelgruppe und Woche', `<div class="tw"><table><tr><th>Muskel</th><th>Ø Zeitraum</th><th>letzte 4 Wo.</th><th>0 – 25 Sätze</th><th></th></tr>${mrows}</table></div>`,
+        `Hauptmuskel zählt 1 Satz, Hilfsmuskel ½ (z. B. Bankdrücken: Brust 1, Trizeps und Schultern je ½). Für Muskelaufbau gelten etwa 10–20 Sätze pro Muskel und Woche als guter Bereich (helles Feld). ${nUnknown ? `${fmt(nUnknown / nSets * 100)} % der Sätze hat Garmin keiner Übung zugeordnet – in der Garmin-Connect-App korrigieren macht die Auswertung genauer.` : ''}`)}
+      ${card('Sätze pro Woche nach Muskelgruppe', div('chMus2'))}
+      ${card('Progression', `<div class="row"><select id="exSel">${rows.map(r => `<option value="${esc(r.k)}"${r.k === state.ex ? ' selected' : ''}>${esc(exName(r.k))} (${r.n})</option>`).join('')}</select></div>${div('chEx')}`,
+        sel && sel.metric === 'e1rm' ? 'Geschätztes Maximalgewicht (1RM) nach Epley = Gewicht × (1 + Wdh./30), aus dem besten Satz jeder Einheit (nur Sätze mit 1–12 Wdh.). Steigt die Linie, wirst du stärker – auch wenn du mit gleichem Gewicht mehr Wiederholungen schaffst.' : 'Übung ohne Gewicht: Maßstab sind die meisten Wiederholungen in einem Satz.')}
+      ${card('Alle Übungen', `<div class="tw"><table><tr><th>Übung</th><th>Einh.</th><th>zuletzt</th><th>aktuell</th><th>Trend / Monat</th><th>Status</th></tr>${rows.map((r, j) => `<tr class="click" data-j="${j}"><td style="white-space:normal">${esc(exName(r.k))}</td><td>${r.n}</td><td>${fdate(r.last)}</td><td>${r.metric === 'e1rm' ? fmt(r.lastV, 1) + ' kg' : fmt(r.lastV) + ' Wdh.'}</td><td>${r.perMonth == null ? '–' : sgn(r.perMonth, 1) + ' %'}</td><td class="${r.status[1]}">${r.status[0]} ${r.status[2]}</td></tr>`).join('')}</table></div>`,
+        'Nur Übungen mit mind. 3 Einheiten im Zeitraum. Trend = lineare Steigung der Bestleistung je Einheit, in % pro Monat. Plateau = die letzten 3 Einheiten nicht besser als die 5 davor. Zeile antippen = Verlauf anzeigen.')}
+    </div>`;
+  chart('chMus2', {x: weeks, xl: weeks.map(w => fdate(w, false)), xw: 46, h: 220, tt: j => 'Woche ab ' + fdate(weeks[j], true),
+    series: [{type: 'stack', parts: MUSCLES.map((g, gi) => ({v: setsW[gi], c: MUSCLE_C[gi], label: g, f: v => fmt(v, 1)}))}]});
+  const drawEx = () => {
+    const r = rows.find(x => x.k === state.ex); if (!r) return;
+    const x = r.s.map(s => s.d), isE = r.metric === 'e1rm';
+    chart('chEx', {x, xl: x.map(d => fdate(d)), xw: 60, h: 220, tt: j => `${WD[wday(x[j])]}, ${fdate(x[j], true)}`,
+      series: isE ? [
+        {type: 'line', v: r.s.map(s => s.best), c: 'c1', w: 2.2, dots: true, r: 3.2, label: 'geschätztes 1RM', f: v => fmt(v, 1) + ' kg'},
+        {type: 'line', v: r.s.map(s => s.top || null), c: 'c4', w: 1.4, dash: '4 3', dots: true, r: 2.4, label: 'schwerstes Gewicht', f: v => fmt(v, 1) + ' kg'}]
+        : [{type: 'line', v: r.s.map(s => s.reps), c: 'c1', w: 2.2, dots: true, r: 3.2, label: 'max. Wiederholungen', f: v => fmt(v)}],
+      extraTip: j => [['muted', 'Sätze', fmt(r.s[j].sets)], ['muted', 'bester Satz', r.s[j].top ? `${fmt(r.s[j].topReps)} × ${fmt(r.s[j].top, 1)} kg` : `${fmt(r.s[j].reps)} Wdh.`], ['muted', 'Volumen', fmt(r.s[j].vol) + ' kg']]});
+  };
+  $('#exSel').onchange = e => { state.ex = e.target.value; store.set('ex', state.ex); drawEx(); };
+  el.querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { state.ex = rows[+tr.dataset.j].k; store.set('ex', state.ex); $('#exSel').value = state.ex; drawEx(); $('#exSel').scrollIntoView({behavior: 'smooth', block: 'center'}); });
+  drawEx();
+}
+
 /* ---------------- Körper */
 function pageKoerper(el) {
   const wm = RAW.models.weight, rg = rangeIdx(), from = D[rg[0]].d, to = D[rg[1]].d;
@@ -836,8 +975,8 @@ function pageKoerper(el) {
 }
 
 /* ---------------- Zusammenhänge */
-const CORR_VARS = ['hrv', 'rhr', 'slDur', 'slScore', 'slDeep', 'slRem', 'slStart', 'slEnd', 'stress', 'steps', 'bbMax', 'bbCh', 'kcalA', 'im', 'trimp', 'resp', 'spo2', 'kg', 'acwr', 'tsb', 'debt', 'hol'];
-const CORR_GROUP = {trimp: 'load', im: 'load', kcalA: 'load', acwr: 'load', tsb: 'load', steps: 'load',
+const CORR_VARS = ['hrv', 'rhr', 'slDur', 'slScore', 'slDeep', 'slRem', 'slStart', 'slEnd', 'stress', 'steps', 'bbMax', 'bbCh', 'kcalA', 'im', 'trimp', 'resp', 'spo2', 'kg', 'acwr', 'tsb', 'debt', 'vol', 'hol'];
+const CORR_GROUP = {vol: 'load', trimp: 'load',im: 'load', kcalA: 'load', acwr: 'load', tsb: 'load', steps: 'load',
   slDur: 'sleep', slScore: 'sleep', slDeep: 'sleep', slRem: 'sleep', slStart: 'sleep', slEnd: 'sleep', debt: 'sleep', bbMax: 'bb', bbCh: 'bb'};
 function corrPairs(rg) {
   const vals = {}; for (const k of CORR_VARS) vals[k] = [];
@@ -973,7 +1112,10 @@ function pageMethodik(el) {
     ['Prognose HRV und Ruhepuls', 'Ridge-Regression (lineares Modell mit Strafterm gegen Überanpassung) mit Merkmalen vom Vortag: Wert und 7-Tage-Mittel, der jeweils andere Wert, Last heute und 7 Tage, Schlafdauer, Schlafscore, Stress, Atemfrequenz, Wochenende, Ferien und Klausur am Folgetag. Walk-Forward-Test: jede Prognose nutzt nur Daten aus der Vergangenheit. Vergleich mit „wie gestern“ und „7-Tage-Mittel“ über den mittleren absoluten Fehler (MAE).'],
     ['Prognose Schlafscore', 'Holt-Winters (exponentielle Glättung mit Niveau, Trend und 7-Tage-Saison), Parameter per Gittersuche. Intervall aus der Streuung der bisherigen Ein-Schritt-Fehler.'],
     ['Zusammenhänge', 'Pearson-Korrelation r (−1 bis +1), n = Anzahl Tage mit beiden Werten, p-Wert aus der t-Verteilung. „Folgetag“: X von Tag t, Y von Tag t+1. Bei vielen Tests werden zufällige Treffer wahrscheinlich, deshalb zusätzlich die Bonferroni-Schwelle.'],
-    ['Laufökonomie', 'Meter pro Herzschlag = Distanz ÷ (Ø Puls × Dauer in Minuten). Steigt der Wert bei ähnlichem Tempo, läufst du ökonomischer.'],
+    ['Krafttraining: Sätze pro Muskelgruppe', 'Jeder von Garmin erkannte Satz wird einer Muskelgruppe zugeordnet: Hauptmuskel zählt 1, Hilfsmuskel ½ (Bankdrücken: Brust 1, Trizeps ½, Schultern ½). Für Muskelaufbau gelten etwa 10–20 Sätze pro Muskel und Woche als guter Bereich; darunter wächst meist weniger, deutlich darüber steigt vor allem die Ermüdung. Nicht erkannte Sätze zählen nicht mit.'],
+    ['Geschätztes Maximalgewicht (1RM)', 'Epley-Formel: Gewicht × (1 + Wiederholungen ÷ 30), berechnet für jeden Satz mit 1–12 Wiederholungen; pro Einheit zählt der beste Satz. So werden „mehr Wiederholungen mit gleichem Gewicht“ und „mehr Gewicht“ vergleichbar. Trend = lineare Steigung über den Zeitraum in % pro Monat; Plateau = die letzten 3 Einheiten sind nicht besser als die 5 davor.'],
+    ['Kraftvolumen', 'Summe aus Gewicht × Wiederholungen aller Sätze eines Tages. Anders als TRIMP bildet es Krafttraining direkt ab und steht auch unter „Zusammenhänge“ zur Auswahl.'],
+    ['Laufökonomie','Meter pro Herzschlag = Distanz ÷ (Ø Puls × Dauer in Minuten). Steigt der Wert bei ähnlichem Tempo, läufst du ökonomischer.'],
     ['Saisonvergleich', 'Monatsmittel je Kalenderjahr (mind. 5 Werte pro Monat).'],
   ];
   el.innerHTML = `<div class="grid">

@@ -243,6 +243,21 @@ def norm_day(ds, us, sl, hv) -> dict:
     return {k: v for k, v in r.items() if v is not None}
 
 
+def norm_sets(resp) -> list:
+    """Aktive Sätze kompakt: [Kategorie, Übung, Wiederholungen, kg, Sekunden]."""
+    out = []
+    for s in (resp or {}).get("exerciseSets") or []:
+        if s.get("setType") != "ACTIVE":
+            continue
+        ex = (s.get("exercises") or [{}])[0] or {}
+        cat = ex.get("category") or "UNKNOWN"
+        reps = s.get("repetitionCount")
+        w = s.get("weight")
+        out.append([cat, ex.get("name") or "", reps if reps is not None else None,
+                    round(w / 1000, 2) if w else 0, round(s.get("duration") or 0)])
+    return out
+
+
 def norm_act(a: dict) -> dict:
     t = str(a.get("startTimeLocal") or "")
     z = [round((a.get(f"hrTimeInZone_{i}") or 0) / 60, 1) for i in range(1, 6)]
@@ -337,7 +352,19 @@ def fetch(g, cache):
         for a in res or []:
             n = norm_act(a)
             if n.get("id"):
-                acts[str(n["id"])] = n
+                acts[str(n["id"])] = n  # ersetzt auch "ex" -> Sätze der letzten Tage werden neu geholt
+
+    # Einzelsätze der Krafttrainings (Übung, Wiederholungen, Gewicht)
+    todo_ex = [a for a in acts.values() if "strength" in a.get("type", "") and "ex" not in a and a.get("id")]
+    if todo_ex:
+        log.info("Krafttraining: Sätze für %d Einheiten laden …", len(todo_ex))
+    for i, a in enumerate(sorted(todo_ex, key=lambda x: x["d"]), 1):
+        res = call(g.get_activity_exercise_sets, int(a["id"]))
+        if res is not FAIL:
+            a["ex"] = norm_sets(res)
+        if i % 20 == 0 or i == len(todo_ex):
+            log.info("  %d/%d", i, len(todo_ex))
+        time.sleep(PAUSE_S)
 
     last_w = max(weights.keys(), default=None)
     w_start = max(START_DATE, parse(last_w) - dt.timedelta(days=14)) if last_w else START_DATE
@@ -390,6 +417,16 @@ def demo_cache(seed=7):
                               "name": "Krafttraining", "dur": round(dur, 1), "hr": rnd_.randint(100, 120),
                               "hrMax": rnd_.randint(150, 175), "kcal": int(dur * 5.5), "z": [round(x, 1) for x in z],
                               "sets": rnd_.randint(18, 34), "reps": rnd_.randint(150, 300)}
+            weeks = (d - START_DATE).days / 7
+            plan = [("BENCH_PRESS", "BARBELL_BENCH_PRESS", 45), ("ROW", "SEATED_CABLE_ROW", 40),
+                    ("PULL_UP", "LAT_PULLDOWN", 50), ("SHOULDER_PRESS", "", 22), ("CURL", "DUMBBELL_HAMMER_CURL", 10),
+                    ("TRICEPS_EXTENSION", "TRICEPS_PRESSDOWN", 15), ("LATERAL_RAISE", "", 7), ("SQUAT", "BARBELL_BACK_SQUAT", 50)]
+            ex = []
+            for cat, name, base in rnd_.sample(plan, 6):
+                top = base * (1 + 0.004 * weeks) + rnd_.gauss(0, base * 0.03)
+                for _ in range(3):
+                    ex.append([cat, name, rnd_.randint(6, 12), round(top / 2.5) * 2.5, rnd_.randint(30, 70)])
+            acts[str(aid)]["ex"] = ex
             aid += 1
             trimp += sum((i + 1) * x for i, x in enumerate(z))
         if rnd_.random() < 0.04:
