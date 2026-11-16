@@ -1,0 +1,16 @@
+# Zugangsdaten und Tokens – niemals einchecken
+.env
+.garmin_tokens/
+personal.json
+
+# Persönliche Gesundheitsdaten
+cache/
+garmin-dashboard.html
+garmin-dashboard-demo.html
+
+update.log
+state.enc
+site/
+cloud_tokens.json
+__pycache__/
+*.tmp

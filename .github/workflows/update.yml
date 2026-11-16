@@ -1,0 +1,83 @@
+name: Dashboard aktualisieren
+
+on:
+  schedule:
+    - cron: "15 5 * * *"    # 06:15 MEZ / 07:15 MESZ
+    - cron: "0 18 * * *"    # 19:00 MEZ / 20:00 MESZ
+  workflow_dispatch: {}     # "Run workflow"-Knopf im Actions-Tab
+
+# Läuft nie für Pull Requests – Secrets und Zustand bleiben so bei dir.
+permissions:
+  contents: write           # nur für den Keepalive-Commit (siehe unten)
+  pages: write
+  id-token: write
+
+concurrency:
+  group: dashboard
+  cancel-in-progress: false
+
+env:
+  TZ: Europe/Berlin
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Bibliotheken installieren
+        run: python -m pip install --quiet garminconnect cryptography
+
+      - name: Verschlüsselten Zustand wiederherstellen
+        uses: actions/cache/restore@v4
+        with:
+          path: state.enc
+          key: state-${{ github.run_id }}
+          restore-keys: state-
+
+      - name: Daten laden, rechnen, Seite bauen
+        env:
+          GARMIN_TOKENS: ${{ secrets.GARMIN_TOKENS }}
+          DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+          DASHBOARD_CONFIG: ${{ secrets.DASHBOARD_CONFIG }}
+        run: python update.py --cloud
+
+      - name: Verschlüsselten Zustand speichern
+        if: always() && hashFiles('state.enc') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: state.enc
+          key: state-${{ github.run_id }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      # GitHub schaltet geplante Workflows in öffentlichen Repos nach 60 Tagen
+      # ohne Commit ab. Ein leerer Commit alle ~45 Tage verhindert das.
+      - name: Keepalive
+        if: github.event_name == 'schedule'
+        run: |
+          last=$(git log -1 --format=%ct)
+          if [ $(( $(date +%s) - last )) -gt $(( 45 * 86400 )) ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "keepalive"
+            git push
+          fi
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,1065 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
+<title>Garmin-Dashboard</title>
+<style>
+:root{
+  --bg:#f4f5f7;--card:#fff;--text:#1a1e24;--muted:#5d6876;--line:#dce1e7;--grid:#eaedf1;
+  --accent:#2563eb;--good:#15803d;--bad:#c2410c;--warn:#a16207;--goodbg:rgba(21,128,61,.10);--badbg:rgba(194,65,12,.10);--warnbg:rgba(161,98,7,.10);
+  --hol:rgba(234,179,8,.16);--exam:#9333ea;--band:rgba(37,99,235,.14);
+  --c1:#2563eb;--c2:#db2777;--c3:#0d9488;--c4:#d97706;--c5:#7c3aed;--c6:#64748b;
+  --z1:#93c5fd;--z2:#34d399;--z3:#fbbf24;--z4:#f97316;--z5:#dc2626;
+  --deep:#1e40af;--rem:#8b5cf6;--light:#7dd3fc;--awake:#f9a8d4;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0e1115;--card:#171b21;--text:#e7eaef;--muted:#9ba6b4;--line:#2a313b;--grid:#222932;
+  --accent:#60a5fa;--good:#4ade80;--bad:#fb923c;--warn:#facc15;--goodbg:rgba(74,222,128,.12);--badbg:rgba(251,146,60,.13);--warnbg:rgba(250,204,21,.12);
+  --hol:rgba(250,204,21,.10);--exam:#c084fc;--band:rgba(96,165,250,.17);
+  --c1:#60a5fa;--c2:#f472b6;--c3:#2dd4bf;--c4:#fbbf24;--c5:#a78bfa;--c6:#94a3b8;
+  --deep:#3b63e0;--rem:#a78bfa;--light:#7dd3fc;--awake:#f9a8d4;
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}
+a{color:var(--accent)}
+.app{min-height:100vh}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;overflow-x:auto;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav a{flex:1 0 64px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px 6px;text-decoration:none;color:var(--muted);font-size:11px;white-space:nowrap}
+nav a svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav a.on{color:var(--accent);font-weight:600}
+nav .brand{display:none}
+main{padding:0 16px 96px;max-width:1180px;margin:0 auto}
+header.top{position:sticky;top:0;z-index:10;background:var(--bg);padding:10px 0 8px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;border-bottom:1px solid var(--line);margin-bottom:12px}
+header.top h1{font-size:20px;margin:0;flex:1 1 auto}
+.controls{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:13px}
+select,input[type=date],button{font:inherit;font-size:13px;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+button{cursor:pointer}
+label.tg{display:inline-flex;gap:4px;align-items:center;color:var(--muted);user-select:none}
+.grid{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:700px){.grid.c2{grid-template-columns:1fr 1fr}.grid.c3{grid-template-columns:repeat(3,1fr)}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;min-width:0}
+.card h2{font-size:15px;margin:0 0 4px}
+.card h3{font-size:14px;margin:12px 0 4px}
+.note{color:var(--muted);font-size:12.5px;margin:4px 0 0}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media (min-width:560px){.kpis{grid-template-columns:repeat(3,1fr)}}
+@media (min-width:900px){.kpis.k4{grid-template-columns:repeat(4,1fr)}}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.kpi .l{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .v{font-size:21px;font-weight:650;line-height:1.2}
+.kpi .v small{font-size:12px;font-weight:500;color:var(--muted)}
+.kpi .s{font-size:12px;color:var(--muted)}
+.good{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}.mut{color:var(--muted)}
+.chart{position:relative;width:100%;margin-top:6px}
+.chart svg{display:block;touch-action:pan-y;overflow:visible}
+.chart .ax{font-size:10.5px;fill:var(--muted)}
+.chart .gl{stroke:var(--grid);stroke-width:1}
+.chart .guide{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;opacity:0}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted);margin-top:4px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.empty{color:var(--muted);font-size:13px;padding:24px 0;text-align:center}
+.tip{position:fixed;z-index:50;pointer-events:none;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:7px 9px;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.18);display:none;max-width:250px}
+.tip b{display:block;margin-bottom:3px}
+.tip .r{display:flex;gap:6px;align-items:center;justify-content:space-between}
+.tip .r span:first-child{display:flex;gap:5px;align-items:center;color:var(--muted)}
+.tip i{width:8px;height:8px;border-radius:2px;display:inline-block}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;font-size:12px}
+.tw{overflow-x:auto}
+tr.click{cursor:pointer}tr.click:hover{background:var(--grid)}
+.alert{border-radius:10px;padding:9px 11px;margin:6px 0;font-size:13.5px}
+.alert.bad{background:var(--badbg);color:var(--text);border-left:4px solid var(--bad)}
+.alert.warn{background:var(--warnbg);color:var(--text);border-left:4px solid var(--warn)}
+.alert.good{background:var(--goodbg);color:var(--text);border-left:4px solid var(--good)}
+.hero{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:760px){.hero{grid-template-columns:260px 1fr}}
+.gauge{text-align:center}
+.gauge .big{font-size:44px;font-weight:700;line-height:1}
+.fazit{font-size:16px;font-weight:550;margin:6px 0 4px}
+.bar{height:8px;border-radius:4px;background:var(--grid);position:relative;overflow:hidden;min-width:60px}
+.bar span{position:absolute;top:0;bottom:0}
+.sl{display:grid;grid-template-columns:110px 1fr 34px;gap:8px;align-items:center;font-size:13px;margin:4px 0}
+.sl input{width:100%}
+details summary{cursor:pointer;color:var(--accent);font-size:13px;margin-top:8px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;background:var(--grid);color:var(--muted)}
+.method dt{font-weight:650;margin-top:10px}
+.method dd{margin:2px 0 0;color:var(--muted);font-size:13.5px}
+#lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:none;align-items:center;justify-content:center;padding:16px}
+#lock form{max-width:340px;width:100%;display:grid;gap:10px}
+#lock input[type=password]{font:inherit;font-size:16px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text)}
+#lock button{font-size:15px;padding:9px;background:var(--accent);color:#fff;border:0}
+.demo{background:var(--warnbg);border:1px solid var(--warn);border-radius:10px;padding:8px 10px;font-size:13px;margin-bottom:10px}
+@media (min-width:900px){
+  .app{display:grid;grid-template-columns:200px 1fr}
+  nav{position:sticky;top:0;height:100vh;flex-direction:column;border-top:0;border-right:1px solid var(--line);padding:12px 8px;overflow-y:auto}
+  nav .brand{display:block;font-weight:700;font-size:15px;padding:6px 10px 14px}
+  nav a{flex:0 0 auto;flex-direction:row;gap:10px;font-size:14px;padding:9px 10px;border-radius:9px}
+  nav a.on{background:var(--grid)}
+  main{padding:0 24px 40px;width:100%}
+}
+</style>
+</head>
+<body>
+<div id="lock"><form id="lockForm" class="card">
+  <h2>Garmin-Dashboard</h2>
+  <p class="note">Die Daten sind verschlüsselt. Mit deinem Dashboard-Passwort werden sie nur hier im Browser entschlüsselt.</p>
+  <input type="password" id="lockPw" autocomplete="current-password" placeholder="Passwort" required aria-label="Passwort">
+  <label class="tg"><input type="checkbox" id="lockRem"> Auf diesem Gerät merken</label>
+  <button type="submit">Öffnen</button>
+  <p id="lockMsg" class="note" role="status"></p>
+</form></div>
+<div class="app">
+  <nav id="nav"></nav>
+  <main>
+    <header class="top">
+      <h1 id="title">Heute</h1>
+      <div class="controls">
+        <select id="range" aria-label="Zeitraum">
+          <option value="3m">3 Monate</option><option value="6m">6 Monate</option>
+          <option value="12m">12 Monate</option><option value="all">Alles</option><option value="custom">Eigener …</option>
+        </select>
+        <span id="customWrap" style="display:none"><input type="date" id="from" aria-label="von"> – <input type="date" id="to" aria-label="bis"></span>
+        <label class="tg"><input type="checkbox" id="tHol"> Ferien</label>
+        <label class="tg"><input type="checkbox" id="tExam"> Klausuren</label>
+      </div>
+    </header>
+    <div id="page"></div>
+  </main>
+</div>
+<div id="tip" class="tip"></div>
+<script type="application/json" id="data">__DATA__</script>
+<script>
+'use strict';
+function startApp(RAW, ENCRYPTED) {
+/* ============================================================ Grundlagen */
+const $ = s => document.querySelector(s);
+const NFS = {};
+const nf = d => NFS[d] || (NFS[d] = new Intl.NumberFormat('de-DE', {minimumFractionDigits: d, maximumFractionDigits: d}));
+const fmt = (v, d = 0) => v == null || !isFinite(v) ? '–' : nf(d).format(v);
+const sgn = (v, d = 0) => v == null || !isFinite(v) ? '–' : (v > 0 ? '+' : v < 0 ? '−' : '±') + nf(d).format(Math.abs(v));
+const MON = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+const WD = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+const WDL = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+const fdate = (s, long) => { if (!s) return '–'; const [y, m, d] = s.split('-'); return long ? `${+d}. ${MON[m - 1]} ${y}` : `${d}.${m}.${long === false ? '' : y.slice(2)}`; };
+const addDays = (s, n) => { const d = new Date(s + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const wday = s => (new Date(s + 'T12:00:00Z').getUTCDay() + 6) % 7;
+const dayDiff = (a, b) => Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 864e5);
+const hm = h => { if (h == null) return '–'; h = ((h % 24) + 24) % 24; let H = Math.floor(h), M = Math.round((h - H) * 60); if (M === 60) { H = (H + 1) % 24; M = 0; } return String(H).padStart(2, '0') + ':' + String(M).padStart(2, '0'); };
+const hdur = h => { if (h == null) return '–'; const s = h < 0 ? '−' : ''; h = Math.abs(h); let H = Math.floor(h), M = Math.round((h - H) * 60); if (M === 60) { H++; M = 0; } return `${s}${H}:${String(M).padStart(2, '0')} h`; };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const meanOf = a => { let s = 0, c = 0; for (const v of a) if (v != null && isFinite(v)) { s += v; c++; } return c ? s / c : null; };
+const sdOf = a => { const x = a.filter(v => v != null && isFinite(v)); if (x.length < 2) return null; const m = x.reduce((p, c) => p + c, 0) / x.length; return Math.sqrt(x.reduce((p, c) => p + (c - m) ** 2, 0) / (x.length - 1)); };
+const quantile = (a, q) => { const x = a.filter(v => v != null).sort((p, c) => p - c); if (!x.length) return null; const pos = (x.length - 1) * q, lo = Math.floor(pos); return x[lo] + (x[Math.min(lo + 1, x.length - 1)] - x[lo]) * (pos - lo); };
+
+/* localStorage kann auf dem Handy (file://) fehlen -> immer try/catch */
+const store = {
+  get(k, def) { try { const v = localStorage.getItem('gdash.' + k); return v == null ? def : JSON.parse(v); } catch (e) { return def; } },
+  set(k, v) { try { localStorage.setItem('gdash.' + k, JSON.stringify(v)); } catch (e) { /* kein Speicher verfügbar */ } }
+};
+const DEFAULT_W = {hrv: 30, rhr: 25, slDur: 15, slScore: 15, load: 15};
+const state = {
+  range: store.get('range', '6m'), from: store.get('from', null), to: store.get('to', null),
+  hol: store.get('hol', true), exam: store.get('exam', true),
+  w: Object.assign({}, DEFAULT_W, store.get('weights', {})),
+  cx: store.get('cx', 'trimp'), cy: store.get('cy', 'hrv'), lag: store.get('lag', 1), season: store.get('season', 'hrv'),
+};
+
+/* ============================================================ Daten aufbereiten */
+const D = RAW.days, N = D.length, IDX = {};
+D.forEach((d, i) => IDX[d.d] = i);
+const W_BY_DATE = {};
+for (const w of RAW.weights) W_BY_DATE[w.d] = w;
+D.forEach(d => { const w = W_BY_DATE[d.d]; if (w) { d.kg = w.kg; d.fat = w.fat; d.muscle = w.muscle; } d.wend = wday(d.d) >= 5 ? 1 : 0; d.hol = d.hol ? 1 : 0; });
+const HOLNAME = {};
+for (const h of RAW.holidays) {
+  let a = h.from, b = h.to;
+  while (wday(addDays(a, -1)) >= 5) a = addDays(a, -1);
+  while (wday(addDays(b, 1)) >= 5) b = addDays(b, 1);
+  for (let d = a; d <= b; d = addDays(d, 1)) HOLNAME[d] = h.name;
+}
+const EXAMS = new Set(RAW.exams);
+const ser = k => D.map(d => d[k] ?? null);
+
+function rollStats(v, w = 28, minN = 14) { // Mittel/SD der w Tage VOR Tag i
+  const m = new Array(N).fill(null), s = new Array(N).fill(null);
+  for (let i = 0; i < N; i++) {
+    let sum = 0, sq = 0, c = 0;
+    for (let j = Math.max(0, i - w); j < i; j++) { const x = v[j]; if (x != null) { sum += x; sq += x * x; c++; } }
+    if (c >= minN) { const mu = sum / c; m[i] = mu; s[i] = Math.sqrt(Math.max((sq - c * mu * mu) / (c - 1), 1e-9)); }
+  }
+  return {m, s};
+}
+const backMean = (v, i, w, minN = 1) => { let s = 0, c = 0; for (let j = Math.max(0, i - w + 1); j <= i; j++) if (v[j] != null) { s += v[j]; c++; } return c >= minN ? s / c : null; };
+
+const S = {};
+for (const k of ['hrv', 'rhr', 'slDur', 'slScore', 'resp', 'stress', 'skinT', 'trimp', 'bbMax', 'steps', 'spo2'])
+  S[k] = {v: ser(k)};
+S.trimp.v = S.trimp.v.map(v => v ?? 0);
+for (const k in S) Object.assign(S[k], rollStats(S[k].v));
+const zOf = (k, i) => { const s = S[k]; if (!s || i < 0 || i >= N) return null; const v = s.v[i]; return v == null || s.m[i] == null ? null : (v - s.m[i]) / s.s[i]; };
+
+/* Trainingslast: ACWR und Banister */
+const TR = S.trimp.v;
+const ACWR = new Array(N).fill(null), CTL = [], ATL = [], TSB = [];
+let ctl = 0, atl = 0;
+for (let i = 0; i < N; i++) {
+  ctl += (TR[i] - ctl) / 42; atl += (TR[i] - atl) / 7;
+  CTL.push(ctl); ATL.push(atl); TSB.push(ctl - atl);
+  if (i >= 27) { const a = backMean(TR, i, 7), c = backMean(TR, i, 28); ACWR[i] = c >= 1 ? a / c : null; }
+}
+/* Schlafschuld (14 Tage) */
+const NEED = D.map(d => d.slDur == null ? null : (d.slNeed || 8));
+const DEBT = D.map((d, i) => { let s = 0, c = 0; for (let j = Math.max(0, i - 13); j <= i; j++) if (D[j].slDur != null) { s += NEED[j] - D[j].slDur; c++; } return c >= 7 ? s : null; });
+const MID = D.map(d => d.slStart != null && d.slEnd != null ? (d.slStart + d.slEnd + 24) / 2 : null);
+/* Frühwarnung */
+const FLAGS = D.map((d, i) => {
+  const f = [];
+  const zr = zOf('rhr', i), zh = zOf('hrv', i), zp = zOf('resp', i), zt = zOf('skinT', i);
+  if (zr != null && zr >= 1.5) f.push('Ruhepuls erhöht');
+  if (zh != null && zh <= -1.5) f.push('HRV niedrig');
+  if (zp != null && zp >= 1.5) f.push('Atemfrequenz erhöht');
+  if ((zt != null && zt >= 1.5) || (d.skinT != null && d.skinT >= 0.5)) f.push('Hauttemperatur erhöht');
+  return f;
+});
+/* Readiness */
+const RCOMP = [
+  {k: 'hrv', l: 'HRV', sign: 1, val: i => fmt(D[i].hrv) + ' ms'},
+  {k: 'rhr', l: 'Ruhepuls', sign: -1, val: i => fmt(D[i].rhr) + ' bpm'},
+  {k: 'slDur', l: 'Schlafdauer', sign: 1, val: i => hdur(D[i].slDur)},
+  {k: 'slScore', l: 'Schlafscore', sign: 1, val: i => fmt(D[i].slScore)},
+  {k: 'load', l: 'Vortageslast', sign: -1, val: i => i > 0 ? fmt(TR[i - 1]) + ' TRIMP' : '–'},
+];
+const compZ = (k, i) => k === 'load' ? zOf('trimp', i - 1) : zOf(k, i);
+function readinessAt(i) {
+  let acc = 0, sw = 0, cnt = 0;
+  for (const c of RCOMP) { const z = compZ(c.k, i), w = +state.w[c.k] || 0; if (z == null || !w) continue; acc += w * clamp(z, -3, 3) * c.sign; sw += w; cnt++; }
+  return cnt >= 2 && sw > 0 ? Math.round(clamp(50 + 17 * acc / sw, 0, 100)) : null;
+}
+let READY = [];
+const calcReady = () => { READY = D.map((_, i) => readinessAt(i)); };
+calcReady();
+
+/* Wann ist "heute"? letzter Tag mit Erholungsdaten */
+let LAST = N - 1;
+while (LAST > 0 && D[LAST].hrv == null && D[LAST].rhr == null && D[LAST].slDur == null) LAST--;
+
+/* ============================================================ Kennzahlen-Katalog */
+const MET = {
+  hrv: {l: 'HRV (Nacht)', u: 'ms', good: 1},
+  rhr: {l: 'Ruhepuls', u: 'bpm', good: -1},
+  slDur: {l: 'Schlafdauer', u: 'h', d: 1, good: 1, f: hdur},
+  slScore: {l: 'Schlafscore', good: 1},
+  slDeep: {l: 'Tiefschlaf', u: 'h', d: 1, good: 1, f: hdur},
+  slRem: {l: 'REM-Schlaf', u: 'h', d: 1, good: 1, f: hdur},
+  slStart: {l: 'Einschlafzeit', good: -1, f: hm},
+  slEnd: {l: 'Aufwachzeit', good: 0, f: hm},
+  stress: {l: 'Ø Stress', good: -1},
+  steps: {l: 'Schritte', good: 1},
+  bbMax: {l: 'Body Battery max', good: 1},
+  bbMin: {l: 'Body Battery min', good: 1},
+  bbCh: {l: 'Body Battery geladen', good: 1},
+  bbDr: {l: 'Body Battery verbraucht', good: 0},
+  kcalA: {l: 'Aktivkalorien', u: 'kcal', good: 0},
+  im: {l: 'Intensitätsminuten', u: 'min', good: 1},
+  spo2: {l: 'SpO2', u: '%', good: 1},
+  resp: {l: 'Atemfrequenz', u: '/min', d: 1, good: -1},
+  trimp: {l: 'Trainingslast (TRIMP)', good: 0},
+  kg: {l: 'Gewicht', u: 'kg', d: 1, good: 0},
+  acwr: {l: 'ACWR', d: 2, good: 0},
+  tsb: {l: 'Form (TSB)', d: 0, good: 1},
+  debt: {l: 'Schlafschuld 14 T', u: 'h', d: 1, good: -1, f: hdur},
+  hol: {l: 'Ferien (0/1)', good: 0},
+};
+const metVal = (k, i) => {
+  if (i < 0 || i >= N) return null;
+  if (k === 'acwr') return ACWR[i]; if (k === 'tsb') return TSB[i]; if (k === 'debt') return DEBT[i]; if (k === 'trimp') return TR[i];
+  return D[i][k] ?? null;
+};
+const metFmt = (k, v) => { const m = MET[k] || {}; return m.f ? m.f(v) : fmt(v, m.d || 0) + (m.u && m.u !== 'h' ? ' ' + m.u : ''); };
+
+const TYPE = {strength_training: 'Krafttraining', running: 'Laufen', treadmill_running: 'Laufband', walking: 'Gehen', hiking: 'Wandern', cycling: 'Radfahren', indoor_cycling: 'Indoor-Rad', lap_swimming: 'Schwimmen', open_water_swimming: 'Freiwasser', cardio: 'Cardio', indoor_cardio: 'Cardio', hiit: 'HIIT', yoga: 'Yoga', other: 'Sonstiges', fitness_equipment: 'Fitnessgerät', elliptical: 'Crosstrainer', rowing: 'Rudern', indoor_rowing: 'Rudergerät', soccer: 'Fußball', basketball: 'Basketball', tennis: 'Tennis'};
+const typeName = t => TYPE[t] || (t || '').replace(/_/g, ' ');
+const isRun = t => /running/.test(t || '');
+const actTrimp = a => (a.z || []).reduce((s, x, i) => s + (i + 1) * (x || 0), 0);
+
+/* ============================================================ Zeitraum */
+function rangeIdx() {
+  let i0 = 0, i1 = N - 1;
+  if (state.range === 'custom' && state.from && state.to) {
+    i0 = IDX[state.from] ?? (state.from < D[0].d ? 0 : N - 1);
+    i1 = IDX[state.to] ?? (state.to > D[N - 1].d ? N - 1 : 0);
+    if (i1 < i0) [i0, i1] = [i1, i0];
+  } else if (state.range !== 'all') {
+    const n = {'3m': 91, '6m': 183, '12m': 365}[state.range] || 183;
+    i0 = Math.max(0, N - n);
+  }
+  return [i0, i1];
+}
+const sl = (arr, r) => arr.slice(r[0], r[1] + 1);
+const xDates = r => sl(D, r).map(d => d.d);
+
+/* ============================================================ Statistik */
+function betacf(a, b, x) {
+  const MAXIT = 200, EPS = 3e-12, FPMIN = 1e-300;
+  let qab = a + b, qap = a + 1, qam = a - 1, c = 1, d = 1 - qab * x / qap;
+  if (Math.abs(d) < FPMIN) d = FPMIN; d = 1 / d; let h = d;
+  for (let m = 1; m <= MAXIT; m++) {
+    const m2 = 2 * m; let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN; c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN; d = 1 / d; h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN; c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN; d = 1 / d;
+    const del = d * c; h *= del; if (Math.abs(del - 1) < EPS) break;
+  }
+  return h;
+}
+function lgamma(x) { const c = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5]; let y = x, t = x + 5.5; t -= (x + 0.5) * Math.log(t); let s = 1.000000000190015; for (const v of c) s += v / ++y; return -t + Math.log(2.5066282746310005 * s / x); }
+function ibeta(x, a, b) { if (x <= 0) return 0; if (x >= 1) return 1; const bt = Math.exp(lgamma(a + b) - lgamma(a) - lgamma(b) + a * Math.log(x) + b * Math.log(1 - x)); return x < (a + 1) / (a + b + 2) ? bt * betacf(a, b, x) / a : 1 - bt * betacf(b, a, 1 - x) / b; }
+const pFromT = (t, df) => ibeta(df / (df + t * t), df / 2, 0.5); // zweiseitig
+function pearson(xs, ys) {
+  let n = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+  for (let i = 0; i < xs.length; i++) { const x = xs[i], y = ys[i]; if (x == null || y == null) continue; n++; sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y; }
+  if (n < 5) return {n, r: null};
+  const cov = sxy - sx * sy / n, vx = sxx - sx * sx / n, vy = syy - sy * sy / n;
+  if (vx <= 0 || vy <= 0) return {n, r: null};
+  const r = cov / Math.sqrt(vx * vy), t = r * Math.sqrt((n - 2) / Math.max(1e-12, 1 - r * r));
+  return {n, r, p: pFromT(Math.abs(t), n - 2), b: cov / vx, a: sy / n - cov / vx * sx / n};
+}
+const fmtP = p => p == null ? '–' : p < 0.001 ? '< 0,001' : fmt(p, 3);
+const strength = r => { const a = Math.abs(r); return a < 0.1 ? 'kaum' : a < 0.3 ? 'schwach' : a < 0.5 ? 'mittel' : 'stark'; };
+
+/* ============================================================ Diagramme */
+const tip = $('#tip');
+let tipOwner = null;
+function showTip(html, cx, cy) {
+  tip.innerHTML = html; tip.style.display = 'block';
+  const r = tip.getBoundingClientRect(), vw = innerWidth, vh = innerHeight;
+  let x = cx + 14, y = cy - r.height - 12;
+  if (x + r.width > vw - 6) x = cx - r.width - 14;
+  if (x < 6) x = 6;
+  if (y < 6) y = cy + 16;
+  if (y + r.height > vh - 6) y = vh - r.height - 6;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+function hideTip() { tip.style.display = 'none'; if (tipOwner) { tipOwner.style.opacity = 0; tipOwner = null; } }
+document.addEventListener('pointerdown', e => { if (!e.target.closest('.chart')) hideTip(); });
+addEventListener('scroll', hideTip, {passive: true});
+
+function niceTicks(lo, hi, count) {
+  if (!(hi > lo)) { lo -= 1; hi += 1; }
+  const raw = (hi - lo) / Math.max(2, count), mag = 10 ** Math.floor(Math.log10(raw)), e = raw / mag;
+  const step = (e >= 7.5 ? 10 : e >= 3.5 ? 5 : e >= 1.5 ? 2 : 1) * mag;
+  const a = Math.floor(lo / step + 1e-9) * step, b = Math.ceil(hi / step - 1e-9) * step, t = [];
+  for (let v = a; v <= b + step / 2; v += step) t.push(+v.toFixed(10));
+  return {lo: a, hi: b, ticks: t, step};
+}
+const col = c => `var(--${c})`;
+
+/* chart(host, {x, time, h, series:[{type:line|band|bar|stack|pts, v|lo,hi|parts, c, label, f}], hl, yb, marks, zero, yf, yfix}) */
+function chart(host, o) {
+  if (typeof host === 'string') host = document.getElementById(host);
+  if (!host) return;
+  const W = Math.max(260, Math.floor(host.clientWidth || host.parentElement.clientWidth)), H = o.h || 210;
+  const M = {l: o.ml || 40, r: 10, t: 10, b: 22}, pw = W - M.l - M.r, ph = H - M.t - M.b, n = o.x.length;
+  const step = pw / Math.max(n, 1), X = i => M.l + (i + 0.5) * step;
+  let lo = Infinity, hi = -Infinity;
+  const up = v => { if (v != null && isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } };
+  for (const s of o.series) {
+    if (s.type === 'band') { s.lo.forEach(up); s.hi.forEach(up); }
+    else if (s.type === 'stack') { for (let i = 0; i < n; i++) up(s.parts.reduce((a, p) => a + (p.v[i] || 0), 0)); up(0); }
+    else { s.v.forEach(up); if (s.type === 'bar') up(0); }
+  }
+  if (!isFinite(lo)) { host.innerHTML = '<div class="empty">Keine Daten im gewählten Zeitraum</div>'; return; }
+  (o.hl || []).forEach(h => up(h.y)); (o.yb || []).forEach(b => { up(b.y0); up(b.y1); });
+  if (o.zero) up(0);
+  if (o.yfix) { lo = o.yfix[0]; hi = o.yfix[1]; }
+  const pad = o.yfix ? 0 : (hi - lo) * 0.06 || 1;
+  const nt = niceTicks(o.yfix ? lo : (lo >= 0 ? Math.max(0, lo - pad) : lo - pad), o.yfix ? hi : hi + pad, Math.max(3, Math.round(ph / 42)));
+  const Y = v => M.t + ph - (v - nt.lo) / (nt.hi - nt.lo) * ph;
+  const yf = o.yf || (v => fmt(v, nt.step < 0.1 ? 2 : nt.step < 1 ? 1 : 0));
+  const g = [];
+  for (const t of nt.ticks) g.push(`<line class="gl" x1="${M.l}" x2="${W - M.r}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}"/><text class="ax" x="${M.l - 5}" y="${(Y(t) + 3.5).toFixed(1)}" text-anchor="end">${yf(t)}</text>`);
+  // Ferien und Klausuren
+  if (o.time) {
+    if (state.hol) {
+      let s0 = -1;
+      for (let i = 0; i <= n; i++) {
+        const on = i < n && HOLNAME[o.x[i]];
+        if (on && s0 < 0) s0 = i;
+        if (!on && s0 >= 0) { g.push(`<rect x="${(X(s0) - step / 2).toFixed(1)}" y="${M.t}" width="${((i - s0) * step).toFixed(1)}" height="${ph}" style="fill:var(--hol)"/>`); s0 = -1; }
+      }
+    }
+    if (state.exam) o.x.forEach((d, i) => { if (EXAMS.has(d)) g.push(`<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${M.t}" y2="${M.t + ph}" style="stroke:var(--exam);stroke-width:1.2;stroke-dasharray:3 2;opacity:.8"/>`); });
+  }
+  for (const b of o.yb || []) g.push(`<rect x="${M.l}" width="${pw}" y="${Y(b.y1).toFixed(1)}" height="${Math.max(0, Y(b.y0) - Y(b.y1)).toFixed(1)}" style="fill:${b.c || 'var(--band)'}"/>`);
+  const bw = Math.max(1, Math.min(28, step * 0.78));
+  for (const s of o.series) {
+    const c = col(s.c || 'c1');
+    if (s.type === 'band') {
+      let seg = [];
+      const flush = () => { if (seg.length) { const up_ = seg.map(i => `${X(i).toFixed(1)},${Y(s.hi[i]).toFixed(1)}`), dn = seg.slice().reverse().map(i => `${X(i).toFixed(1)},${Y(s.lo[i]).toFixed(1)}`); g.push(`<polygon points="${up_.concat(dn).join(' ')}" style="fill:${s.fill || c};opacity:${s.op ?? 0.16}"/>`); seg = []; } };
+      for (let i = 0; i < n; i++) { if (s.lo[i] != null && s.hi[i] != null) seg.push(i); else flush(); }
+      flush();
+    } else if (s.type === 'line') {
+      let d = '', pen = false;
+      for (let i = 0; i < n; i++) { const v = s.v[i]; if (v == null) { if (!s.span) pen = false; continue; } d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1); pen = true; }
+      g.push(`<path d="${d}" style="fill:none;stroke:${c};stroke-width:${s.w || 1.8};${s.dash ? 'stroke-dasharray:' + s.dash + ';' : ''}stroke-linejoin:round;stroke-linecap:round;opacity:${s.op ?? 1}"/>`);
+      if (s.dots) for (let i = 0; i < n; i++) if (s.v[i] != null) g.push(`<circle cx="${X(i).toFixed(1)}" cy="${Y(s.v[i]).toFixed(1)}" r="${s.r || 2.2}" style="fill:${c}"/>`);
+    } else if (s.type === 'pts') {
+      for (let i = 0; i < n; i++) { const v = s.v[i]; if (v == null) continue; const cc = s.cf ? col(s.cf(i)) : c; g.push(`<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${s.r || 2.6}" style="fill:${cc};opacity:${s.op ?? .85}"/>`); }
+    } else if (s.type === 'bar') {
+      for (let i = 0; i < n; i++) { const v = s.v[i]; if (v == null || v === 0) continue; const cc = s.cf ? col(s.cf(v, i)) : c, y0 = Y(Math.max(0, v)), y1 = Y(Math.min(0, v)); g.push(`<rect x="${(X(i) - bw / 2).toFixed(1)}" y="${y0.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0.6, y1 - y0).toFixed(1)}" rx="${bw > 6 ? 2 : 0}" style="fill:${cc};opacity:${s.op ?? .9}"/>`); }
+    } else if (s.type === 'stack') {
+      for (let i = 0; i < n; i++) { let acc = 0; for (const p of s.parts) { const v = p.v[i] || 0; if (v <= 0) continue; const y0 = Y(acc + v), y1 = Y(acc); g.push(`<rect x="${(X(i) - bw / 2).toFixed(1)}" y="${y0.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0.5, y1 - y0).toFixed(1)}" style="fill:${col(p.c)}"/>`); acc += v; } }
+    }
+  }
+  for (const h of o.hl || []) g.push(`<line x1="${M.l}" x2="${W - M.r}" y1="${Y(h.y).toFixed(1)}" y2="${Y(h.y).toFixed(1)}" style="stroke:${col(h.c || 'muted')};stroke-width:1.2;${h.dash !== false ? 'stroke-dasharray:5 3' : ''}"/>` + (h.l ? `<text class="ax" x="${W - M.r - 2}" y="${(Y(h.y) - 4).toFixed(1)}" text-anchor="end" style="fill:${col(h.c || 'muted')}">${esc(h.l)}</text>` : ''));
+  for (const mk of o.marks || []) { const i = o.x.indexOf(mk.d); if (i < 0) continue; g.push(`<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${M.t}" y2="${M.t + ph}" style="stroke:${col(mk.c || 'bad')};stroke-width:1.5"/><path d="M${(X(i) - 5).toFixed(1)},${M.t} l5,7 l5,-7z" style="fill:${col(mk.c || 'bad')}"/>`); }
+  // x-Achse
+  const lab = [];
+  if (o.time) {
+    if (n <= 50) { const k = Math.max(1, Math.ceil(n / (pw / 52))); for (let i = 0; i < n; i += k) lab.push([i, fdate(o.x[i], false)]); }
+    else {
+      const months = n / 30.4, every = Math.max(1, Math.ceil(months / (pw / 58)));
+      o.x.forEach((d, i) => { if (d.endsWith('-01')) { const m = +d.slice(5, 7) - 1; if (m % every === 0) lab.push([i, MON[m] + ' ' + d.slice(2, 4)]); } });
+    }
+  } else { const k = Math.max(1, Math.ceil(n / (pw / (o.xw || 40)))); for (let i = 0; i < n; i += k) lab.push([i, o.xl ? o.xl[i] : o.x[i]]); }
+  for (const [i, t] of lab) g.push(`<text class="ax" x="${X(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(t)}</text>`);
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${g.join('')}<line class="guide" x1="0" x2="0" y1="${M.t}" y2="${M.t + ph}"/><rect class="hit" x="${M.l}" y="0" width="${pw}" height="${H}" style="fill:transparent"/></svg>`;
+  const leg = o.series.filter(s => (s.label || s.type === 'stack') && !s.noLeg).flatMap(s => s.type === 'stack' ? s.parts.map(p => [p.c, p.label]) : [[s.legC || s.c || 'c1', s.label]]);
+  if (o.extraLeg) leg.push(...o.extraLeg);
+  if (o.time && (state.hol || state.exam)) { if (state.hol && o.x.some(d => HOLNAME[d])) leg.push(['hol', 'Ferien']); if (state.exam && o.x.some(d => EXAMS.has(d))) leg.push(['exam', 'Klausur']); }
+  if (leg.length && !o.noLegend) host.insertAdjacentHTML('beforeend', `<div class="legend">${leg.map(([c, l]) => `<span><i style="background:${col(c)}"></i>${esc(l)}</span>`).join('')}</div>`);
+  // Tooltip
+  const svg = host.querySelector('svg'), guide = svg.querySelector('.guide'), hit = svg.querySelector('.hit');
+  const move = e => {
+    const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) * (W / r.width);
+    const i = clamp(Math.floor((px - M.l) / step), 0, n - 1);
+    guide.setAttribute('x1', X(i)); guide.setAttribute('x2', X(i)); guide.style.opacity = 1; tipOwner = guide;
+    let title;
+    if (o.tt) title = o.tt(i);
+    else if (o.time) { const d = o.x[i]; title = `${WD[wday(d)]}, ${fdate(d, true)}` + (HOLNAME[d] ? ` · ${HOLNAME[d]}` : '') + (EXAMS.has(d) ? ' · Klausur' : ''); }
+    else title = o.xl ? o.xl[i] : o.x[i];
+    const rows = [];
+    for (const s of o.series) {
+      if (s.noTip) continue;
+      const f = s.f || yf;
+      if (s.type === 'stack') { for (const p of s.parts) if (p.v[i]) rows.push([p.c, p.label, (p.f || f)(p.v[i])]); }
+      else if (s.type === 'band') { if (s.label && s.lo[i] != null) rows.push([s.c || 'c1', s.label, f(s.lo[i]) + ' – ' + f(s.hi[i])]); }
+      else if (s.label && s.v[i] != null) rows.push([s.cf && s.type !== 'bar' ? s.cf(i) : s.c || 'c1', s.label, f(s.v[i])]);
+    }
+    for (const mk of o.marks || []) if (mk.d === o.x[i]) rows.push([mk.c || 'bad', 'Strukturbruch', mk.l || '']);
+    if (o.extraTip) { const x = o.extraTip(i); if (x) rows.push(...x); }
+    showTip(`<b>${esc(title)}</b>` + (rows.length ? rows.map(([c, l, v]) => `<div class="r"><span><i style="background:${col(c)}"></i>${esc(l)}</span><span>${v}</span></div>`).join('') : '<div class="mut">keine Werte</div>'), e.clientX, e.clientY);
+  };
+  hit.addEventListener('pointermove', move);
+  hit.addEventListener('pointerdown', move);
+  hit.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hideTip(); });
+}
+
+function scatter(host, o) {
+  if (typeof host === 'string') host = document.getElementById(host);
+  const W = Math.max(260, host.clientWidth), H = o.h || 300, M = {l: 44, r: 12, t: 10, b: 34}, pw = W - M.l - M.r, ph = H - M.t - M.b;
+  const pts = o.pts;
+  if (pts.length < 3) { host.innerHTML = '<div class="empty">Zu wenige gemeinsame Werte</div>'; return; }
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const pad = (a, b) => (b - a) * 0.06 || 1;
+  const xmin = Math.min(...xs), xmax = Math.max(...xs), ymin = Math.min(...ys), ymax = Math.max(...ys);
+  const lo0 = (mn, mx) => mn >= 0 ? Math.max(0, mn - pad(mn, mx)) : mn - pad(mn, mx);
+  const tx = niceTicks(lo0(xmin, xmax), xmax + pad(xmin, xmax), Math.max(3, Math.round(pw / 70))), ty = niceTicks(lo0(ymin, ymax), ymax + pad(ymin, ymax), Math.max(3, Math.round(ph / 45)));
+  const X = v => M.l + (v - tx.lo) / (tx.hi - tx.lo) * pw, Y = v => M.t + ph - (v - ty.lo) / (ty.hi - ty.lo) * ph;
+  const g = [];
+  for (const t of ty.ticks) g.push(`<line class="gl" x1="${M.l}" x2="${W - M.r}" y1="${Y(t)}" y2="${Y(t)}"/><text class="ax" x="${M.l - 5}" y="${Y(t) + 3.5}" text-anchor="end">${o.fy(t, true)}</text>`);
+  for (const t of tx.ticks) g.push(`<line class="gl" y1="${M.t}" y2="${M.t + ph}" x1="${X(t)}" x2="${X(t)}"/><text class="ax" y="${M.t + ph + 14}" x="${X(t)}" text-anchor="middle">${o.fx(t, true)}</text>`);
+  g.push(`<text class="ax" x="${M.l + pw / 2}" y="${H - 2}" text-anchor="middle">${esc(o.xl)}</text>`);
+  for (const p of pts) g.push(`<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="3" style="fill:${HOLNAME[p[2]] ? 'var(--c4)' : 'var(--c1)'};opacity:.55"/>`);
+  if (o.fit) { const a = tx.lo, b = tx.hi; g.push(`<line x1="${X(a)}" x2="${X(b)}" y1="${Y(o.fit.a + o.fit.b * a)}" y2="${Y(o.fit.a + o.fit.b * b)}" style="stroke:var(--c2);stroke-width:2"/>`); }
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><defs><clipPath id="sc"><rect x="${M.l}" y="${M.t}" width="${pw}" height="${ph}"/></clipPath></defs><g clip-path="url(#sc)">${g.join('')}</g>${g.filter(s => s.includes('class="ax"')).join('')}<rect class="hit" x="${M.l}" y="${M.t}" width="${pw}" height="${ph}" style="fill:transparent"/></svg>`;
+  const svg = host.querySelector('svg');
+  const move = e => {
+    const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) * (W / r.width), py = (e.clientY - r.top) * (H / r.height);
+    let best = null, bd = Infinity;
+    for (const p of pts) { const d = (X(p[0]) - px) ** 2 + (Y(p[1]) - py) ** 2; if (d < bd) { bd = d; best = p; } }
+    if (!best || bd > 900) { hideTip(); return; }
+    showTip(`<b>${WD[wday(best[2])]}, ${fdate(best[2], true)}</b><div class="r"><span>${esc(o.xl)}</span><span>${o.fx(best[0])}</span></div><div class="r"><span>${esc(o.yl)}</span><span>${o.fy(best[1])}</span></div>`, e.clientX, e.clientY);
+  };
+  svg.querySelector('.hit').addEventListener('pointermove', move);
+  svg.querySelector('.hit').addEventListener('pointerdown', move);
+  svg.querySelector('.hit').addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hideTip(); });
+}
+
+/* ============================================================ Bausteine */
+const card = (title, body, note, cls = '') => `<section class="card ${cls}">${title ? `<h2>${title}</h2>` : ''}${body}${note ? `<p class="note">${note}</p>` : ''}</section>`;
+const kpi = (l, v, s, cls = '') => `<div class="kpi"><div class="l">${l}</div><div class="v ${cls}">${v}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
+const div = id => `<div class="chart" id="${id}"></div>`;
+const trendCls = (k, diff, base) => {
+  const g = (MET[k] || {}).good || 0;
+  if (diff == null || base == null) return ['→', 'mut'];
+  const rel = Math.abs(base) > 1e-9 ? diff / Math.abs(base) : diff;
+  if (Math.abs(rel) < 0.02) return ['→', 'mut'];
+  const arrow = diff > 0 ? '↑' : '↓';
+  return [arrow, g === 0 ? 'mut' : (diff * g > 0 ? 'good' : 'bad')];
+};
+const dayLink = d => `${WD[wday(d)]} ${fdate(d)}`;
+
+/* ============================================================ Seiten */
+const ICON = {
+  heute: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  erholung: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/><path d="M3 12h4l2-3 3 6 2-3h7"/>',
+  schlaf: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  training: '<path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/>',
+  koerper: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 9a5 5 0 0 1 8 0l-3 3"/>',
+  zusammenhaenge: '<circle cx="6" cy="17" r="1.6"/><circle cx="10" cy="12" r="1.6"/><circle cx="14" cy="14" r="1.6"/><circle cx="18" cy="7" r="1.6"/><path d="M3 21h18M3 3v18"/>',
+  prognosen: '<path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/>',
+  methodik: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+};
+const PAGES = [
+  {id: 'heute', t: 'Heute', r: pageHeute},
+  {id: 'erholung', t: 'Erholung', r: pageErholung},
+  {id: 'schlaf', t: 'Schlaf', r: pageSchlaf},
+  {id: 'training', t: 'Training', r: pageTraining},
+  {id: 'koerper', t: 'Körper', r: pageKoerper},
+  {id: 'zusammenhaenge', t: 'Zusammenhänge', s: 'Muster', r: pageZusammen},
+  {id: 'prognosen', t: 'Prognosen', r: pagePrognosen},
+  {id: 'methodik', t: 'Methodik', s: 'Info', r: pageMethodik},
+];
+
+/* ---------------- Heute */
+function pageHeute(el) {
+  const i = LAST, d = D[i], r = READY[i];
+  const rc = r == null ? 'mut' : r >= 67 ? 'good' : r >= 40 ? 'warn' : 'bad';
+  const ac = ACWR[i], debt = DEBT[i];
+  let fazit = r == null ? 'Für heute fehlen Werte (HRV/Ruhepuls/Schlaf) – kein Readiness-Score.'
+    : r >= 67 ? 'Gut erholt – ein hartes Krafttraining passt heute.'
+    : r >= 40 ? 'Normale Erholung – Training wie geplant, Volumen nicht steigern.'
+    : 'Erholung unter deinem Normalbereich – heute eher locker trainieren oder Pause.';
+  const extra = [];
+  if (ac != null && ac > 1.5) extra.push('die Last der letzten Woche liegt deutlich über deinem Schnitt');
+  else if (ac != null && ac < 0.8 && CTL[i] > 5) extra.push('du trainierst gerade weniger als üblich');
+  if (debt != null && debt > 5) extra.push(`Schlafschuld ${hdur(debt)} in 14 Tagen`);
+  if (extra.length) fazit += ' Achtung: ' + extra.join(', ') + '.';
+  // Warnhinweise
+  const al = [];
+  const fl = FLAGS[i];
+  if (fl.length >= 2) al.push(['bad', `<b>Frühwarnung:</b> ${fl.join(', ')}. Das tritt oft bei Infekten, Schlafmangel oder großem Stress auf. Hinweis, keine Diagnose – auf Symptome achten und Belastung reduzieren.`]);
+  for (const [k, lab] of [['hrv', 'HRV'], ['rhr', 'Ruhepuls'], ['resp', 'Atemfrequenz'], ['slDur', 'Schlafdauer'], ['stress', 'Stress']]) {
+    const z = zOf(k, i); if (z != null && Math.abs(z) >= 2) al.push(['warn', `${lab} heute auffällig (${sgn(z, 1)} SD gegenüber deinen letzten 28 Tagen).`]);
+  }
+  if (ac != null && ac > 1.5) al.push(['warn', `ACWR ${fmt(ac, 2)} – akute Last ist mehr als 1,5× so hoch wie die chronische. Verletzungs- und Überlastungsrisiko steigt.`]);
+  if (debt != null && debt > 7) al.push(['warn', `Schlafschuld ${hdur(debt)} in den letzten 14 Tagen.`]);
+  const wm = RAW.models.weight;
+  if (wm && wm.eta && wm.eta.slopeWeek < 0 && wm.eta.status !== 'erreicht') al.push(['warn', `Gewichtstrend sinkt (${sgn(wm.eta.slopeWeek, 2)} kg/Woche) – für Masseaufbau Kalorien prüfen.`]);
+  const nextExam = RAW.exams.filter(e => e >= addDays(D[N - 1].d, 1)).sort()[0];
+  if (nextExam) { const dd = dayDiff(D[N - 1].d, nextExam); if (dd <= 7) al.push(['good', `Nächste Klausur: ${WDL[wday(nextExam)]}, ${fdate(nextExam, true)} (in ${dd} ${dd === 1 ? 'Tag' : 'Tagen'}). Früh schlafen lohnt sich.`]); }
+  if (!al.length) al.push(['good', 'Keine Auffälligkeiten heute.']);
+  // Gauge
+  const ang = (r ?? 0) / 100 * Math.PI, R = 70, cx = 90, cy = 84;
+  const ex = cx - R * Math.cos(ang), ey = cy - R * Math.sin(ang);
+  const gauge = `<svg viewBox="0 0 180 96" width="180" height="96"><path d="M20,84 A70,70 0 0 1 160,84" style="fill:none;stroke:var(--grid);stroke-width:14;stroke-linecap:round"/>${r != null ? `<path d="M20,84 A70,70 0 0 1 ${ex.toFixed(1)},${ey.toFixed(1)}" style="fill:none;stroke:var(--${rc === 'mut' ? 'muted' : rc});stroke-width:14;stroke-linecap:round"/>` : ''}</svg>`;
+  // Komponenten
+  const sw = Object.values(state.w).reduce((a, b) => a + (+b || 0), 0) || 1;
+  const comps = RCOMP.map(c => {
+    const z = compZ(c.k, i), zz = z == null ? null : clamp(z, -3, 3) * c.sign;
+    const w = +state.w[c.k] || 0;
+    const barL = zz == null ? '' : zz >= 0 ? `left:50%;width:${zz / 6 * 100}%;background:var(--good)` : `right:50%;width:${-zz / 6 * 100}%;background:var(--bad)`;
+    return `<tr><td>${c.l}</td><td>${c.val(i)}</td><td>${z == null ? '–' : sgn(z, 1)}</td><td style="width:40%"><div class="bar"><span style="${barL}"></span><span style="left:50%;width:1px;background:var(--muted)"></span></div></td><td>${Math.round(w / sw * 100)} %</td></tr>`;
+  }).join('');
+  const sliders = RCOMP.map(c => `<div class="sl"><span>${c.l}</span><input type="range" min="0" max="50" step="5" value="${state.w[c.k]}" data-k="${c.k}"><span id="wv-${c.k}">${state.w[c.k]}</span></div>`).join('');
+  // KPIs 7 vs 90
+  const kk = ['hrv', 'rhr', 'slDur', 'slScore', 'stress', 'steps', 'bbMax', 'kcalA', 'im', 'trimp', 'resp', 'spo2'];
+  const kpis = kk.map(k => {
+    const v7 = meanOf(D.slice(Math.max(0, i - 6), i + 1).map((_, j) => metVal(k, Math.max(0, i - 6) + j)));
+    const v90 = meanOf(D.slice(Math.max(0, i - 89), i + 1).map((_, j) => metVal(k, Math.max(0, i - 89) + j)));
+    const [arr, cls] = trendCls(k, v7 != null && v90 != null ? v7 - v90 : null, v90);
+    return kpi(MET[k].l + ' · Ø 7 T', `${metFmt(k, v7)} <span class="${cls}">${arr}</span>`, `90 T: ${metFmt(k, v90)}`);
+  }).join('');
+  const mh = RAW.models.hrv, mr = RAW.models.rhr;
+  const lastAct = RAW.acts.length ? RAW.acts[RAW.acts.length - 1] : null;
+  el.innerHTML = `
+    ${RAW.demo ? '<div class="demo"><b>Demo-Daten:</b> Diese Datei zeigt synthetische Werte zum Ausprobieren.</div>' : ''}
+    <div class="hero">
+      ${card('Readiness', `<div class="gauge">${gauge}<div class="big ${rc}">${r ?? '–'}</div><div class="note">${WDL[wday(d.d)]}, ${fdate(d.d, true)}</div></div>`, 'Eigener Score aus 0–100, 50 = dein normaler Tag.')}
+      ${card('Fazit', `<p class="fazit">${fazit}</p>${al.map(([c, t]) => `<div class="alert ${c}">${t}</div>`).join('')}
+        <p class="note">Prognose Nacht auf ${mh.target ? fdate(mh.target, false) : '–'}: HRV ${mh.pred != null ? fmt(mh.pred) + ' ± ' + fmt(mh.pi) + ' ms' : '–'}, Ruhepuls ${mr.pred != null ? fmt(mr.pred) + ' ± ' + fmt(mr.pi) + ' bpm' : '–'} (<a href="#prognosen">Details</a>).
+        ${lastAct ? `Letzte Aktivität: ${typeName(lastAct.type)} am ${fdate(lastAct.d, false)}, ${fmt(lastAct.dur)} min, TRIMP ${fmt(actTrimp(lastAct))}.` : ''}</p>`)}
+    </div>
+    <div class="grid" style="margin-top:12px">
+      ${card('Zusammensetzung des Scores', `<div class="tw"><table><tr><th>Wert</th><th>heute</th><th>z</th><th>Abweichung</th><th>Gewicht</th></tr>${comps}</table></div>
+        <details><summary>Gewichte anpassen</summary>${sliders}<button id="wreset" style="margin-top:6px">Zurücksetzen</button></details>`,
+        'z = Abstand zu deinem Mittel der 28 Tage davor, in Standardabweichungen. Grün = besser als normal. Score = 50 + 17 × gewichteter Mittelwert der (auf ±3 begrenzten) z-Werte.')}
+      ${card('Letzte 7 Tage im Vergleich zu 90 Tagen', `<div class="kpis">${kpis}</div>`, 'Pfeil grün = Entwicklung in die günstige Richtung, rot = ungünstig, grau = neutral oder < 2 % Änderung. Diese Seite ignoriert den Zeitraumfilter.')}
+      ${card('Readiness-Verlauf', div('chReady'))}
+    </div>`;
+  el.querySelectorAll('input[type=range]').forEach(inp => inp.addEventListener('input', () => {
+    state.w[inp.dataset.k] = +inp.value; store.set('weights', state.w); calcReady();
+    $('#wv-' + inp.dataset.k).textContent = inp.value;
+    clearTimeout(pageHeute.t); pageHeute.t = setTimeout(() => { const y = scrollY; render(); scrollTo(0, y); const det = $('details'); if (det) det.open = true; }, 250);
+  }));
+  $('#wreset').onclick = () => { state.w = Object.assign({}, DEFAULT_W); store.set('weights', state.w); calcReady(); render(); };
+  const rg = rangeIdx(), x = xDates(rg), rv = sl(READY, rg);
+  chart('chReady', {x, time: true, h: 180, yfix: [0, 100], yb: [{y0: 67, y1: 100, c: 'var(--goodbg)'}, {y0: 0, y1: 40, c: 'var(--badbg)'}],
+    series: [{type: 'line', v: rv, c: 'c6', w: 1, op: .5, noTip: true}, {type: 'line', v: rv.map((_, j) => backMean(READY, rg[0] + j, 7, 3)), c: 'c1', w: 2.2, label: '7-Tage-Mittel', f: v => fmt(v)}, {type: 'pts', v: rv, c: 'c1', r: 1.8, label: 'Readiness', f: v => fmt(v), noLeg: true}]});
+}
+
+/* ---------------- Erholung */
+function bandChart(id, k, label, unit, extraSeries = [], cpKey) {
+  const rg = rangeIdx(), x = xDates(rg), s = S[k];
+  const v = sl(s.v, rg), m = sl(s.m, rg), sd = sl(s.s, rg);
+  const z = v.map((val, j) => val == null || m[j] == null ? null : (val - m[j]) / sd[j]);
+  const f = vv => fmt(vv) + ' ' + unit;
+  chart(id, {x, time: true, h: 220, series: [
+    {type: 'band', lo: m.map((mm, j) => mm == null ? null : mm - sd[j]), hi: m.map((mm, j) => mm == null ? null : mm + sd[j]), c: 'c1', label: 'Normalbereich (±1 SD)', f, legC: 'c1'},
+    {type: 'line', v: m, c: 'c1', w: 1, dash: '4 3', op: .7, label: 'Mittel 28 T', f},
+    ...extraSeries.map(e => Object.assign({f}, e(rg))),
+    {type: 'line', v, c: 'c6', w: 1, op: .45, noTip: true},
+    {type: 'pts', v, c: 'c1', r: 2.3, cf: j => z[j] != null && Math.abs(z[j]) >= 2 ? 'bad' : 'c1', label, f: vv => f(vv)},
+  ], marks: (RAW.models.cp[cpKey || k] || []).map(c => ({d: c.d, l: `${fmt(c.before)} → ${fmt(c.after)}`})),
+    extraLeg: [['bad', 'auffällig (≥ 2 SD)']],
+    extraTip: j => z[j] != null ? [['muted', 'z-Wert', sgn(z[j], 1)]] : null});
+}
+function eventStudy(k, rg) {
+  const tr = sl(TR, rg).filter(v => v > 0);
+  const q = quantile(tr, 0.8);
+  if (q == null) return null;
+  const hard = [];
+  for (let i = rg[0]; i <= rg[1]; i++) if (TR[i] > 0 && TR[i] >= q) hard.push(i);
+  const res = [];
+  for (let k2 = 0; k2 <= 5; k2++) {
+    const dev = [];
+    for (const t of hard) { const j = t + 1 + k2; const base = S[k].m[t]; if (j < N && S[k].v[j] != null && base != null) dev.push(S[k].v[j] - base); }
+    const mu = meanOf(dev), s = sdOf(dev), ci = s != null ? 1.96 * s / Math.sqrt(dev.length) : null;
+    res.push({mu, lo: mu != null && ci != null ? mu - ci : null, hi: mu != null && ci != null ? mu + ci : null, n: dev.length});
+  }
+  return {q, nHard: hard.length, res};
+}
+function pageErholung(el) {
+  const rg = rangeIdx();
+  const anomalies = [];
+  for (let i = rg[1]; i >= rg[0]; i--) {
+    const parts = [];
+    for (const [k, l, u] of [['hrv', 'HRV', 'ms'], ['rhr', 'Ruhepuls', 'bpm'], ['resp', 'Atemfr.', '/min'], ['stress', 'Stress', '']]) {
+      const z = zOf(k, i); if (z != null && Math.abs(z) >= 2) parts.push(`${l} ${fmt(D[i][k], k === 'resp' ? 1 : 0)}${u ? ' ' + u : ''} <span class="${(k === 'hrv' ? z < 0 : z > 0) ? 'bad' : 'good'}">(${sgn(z, 1)} SD)</span>`);
+    }
+    if (parts.length || FLAGS[i].length >= 2) anomalies.push(`<tr><td>${dayLink(D[i].d)}${FLAGS[i].length >= 2 ? ' <span class="pill" style="color:var(--bad)">Frühwarnung</span>' : ''}</td><td style="text-align:left;white-space:normal">${parts.join(', ') || FLAGS[i].join(', ')}</td></tr>`);
+    if (anomalies.length >= 30) break;
+  }
+  const es = eventStudy('hrv', rg), er = eventStudy('rhr', rg);
+  const cps = ['hrv', 'rhr'].flatMap(k => (RAW.models.cp[k] || []).map(c => `<tr><td>${fdate(c.d, true)}</td><td>${k === 'hrv' ? 'HRV' : 'Ruhepuls'}</td><td>${fmt(c.before)} → ${fmt(c.after)}</td><td>${fmt(c.t, 1)}</td></tr>`));
+  const hv = sl(S.hrv.v, rg), rv = sl(S.rhr.v, rg);
+  el.innerHTML = `
+    <div class="kpis k4">
+      ${kpi('HRV Ø im Zeitraum', fmt(meanOf(hv)) + ' <small>ms</small>', `SD ${fmt(sdOf(hv), 1)} · letzte: ${fmt(D[LAST].hrv)} ms`)}
+      ${kpi('Ruhepuls Ø im Zeitraum', fmt(meanOf(rv)) + ' <small>bpm</small>', `SD ${fmt(sdOf(rv), 1)} · letzter: ${fmt(D[LAST].rhr)} bpm`)}
+      ${kpi('Auffällige Tage', fmt(anomalies.length), 'mind. ein Wert ≥ 2 SD')}
+      ${kpi('Frühwarn-Tage', fmt(sl(FLAGS, rg).filter(f => f.length >= 2).length), '≥ 2 Werte gleichzeitig auffällig')}
+    </div>
+    <div class="grid" style="margin-top:12px">
+      ${card('HRV (nächtlicher Mittelwert)', div('chHrv'), 'Band = dein Mittel ± 1 Standardabweichung der 28 Tage davor. Gestrichelt grün: Garmins Normalbereich. Rote Markierung oben = erkannter Strukturbruch (dauerhafte Niveauänderung).')}
+      ${card('Ruhepuls', div('chRhr'), 'Rote Punkte: Abweichung ≥ 2 SD vom persönlichen Normalbereich.')}
+      <div class="grid c2">
+        ${card('Erholungskurve HRV nach harten Tagen', div('chEsH'), es ? `Harte Tage = oberste 20 % der Trainingstage (TRIMP ≥ ${fmt(es.q)}), n = ${es.nHard}. Nacht 0 = direkt nach dem Training. Kurve = Abweichung von deinem 28-Tage-Mittel, Band = 95-%-Intervall.` : '')}
+        ${card('Erholungskurve Ruhepuls nach harten Tagen', div('chEsR'), 'Liegt das Band komplett über/unter der Nulllinie, ist der Effekt statistisch belastbar.')}
+      </div>
+      ${card('Auffällige Tage', anomalies.length ? `<div class="tw"><table><tr><th>Tag</th><th style="text-align:left">Werte</th></tr>${anomalies.join('')}</table></div>` : '<p class="note">Keine auffälligen Tage im Zeitraum.</p>', 'Neueste zuerst, max. 30. Frühwarnung = mind. zwei Werte gleichzeitig ungünstig (Ruhepuls ≥ +1,5 SD, HRV ≤ −1,5 SD, Atemfrequenz ≥ +1,5 SD, Hauttemperatur falls vorhanden).')}
+      ${card('Strukturbrüche', cps.length ? `<div class="tw"><table><tr><th>ab Woche</th><th>Wert</th><th>Niveau vorher → nachher</th><th>Stärke (t)</th></tr>${cps.join('')}</table></div>` : '<p class="note">Keine dauerhaften Niveauwechsel erkannt.</p>', 'Gesucht mit binärer Segmentierung auf Wochenmitteln (mind. 4 Wochen je Abschnitt, t > 4,5). Über die gesamte Historie berechnet.')}
+    </div>`;
+  bandChart('chHrv', 'hrv', 'HRV', 'ms', [rg2 => ({type: 'line', v: sl(ser('hrvLo'), rg2), c: 'good', w: 1, dash: '2 3', label: 'Garmin-Normal unten'}), rg2 => ({type: 'line', v: sl(ser('hrvHi'), rg2), c: 'good', w: 1, dash: '2 3', label: 'Garmin-Normal oben', noLeg: true})]);
+  bandChart('chRhr', 'rhr', 'Ruhepuls', 'bpm');
+  const esChart = (id, e, unit) => { if (!e) { $('#' + id).innerHTML = '<div class="empty">Zu wenige Trainingstage</div>'; return; }
+    const lab = e.res.map((_, k) => 'Nacht ' + k);
+    chart(id, {x: lab, h: 190, zero: true, hl: [{y: 0, c: 'muted'}], tt: k => `${lab[k]} (n = ${e.res[k].n})`,
+      series: [{type: 'band', lo: e.res.map(r => r.lo), hi: e.res.map(r => r.hi), c: 'c2', label: '95-%-Intervall', f: v => sgn(v, 1) + ' ' + unit},
+        {type: 'line', v: e.res.map(r => r.mu), c: 'c2', w: 2.4, dots: true, r: 3.5, label: 'Ø Abweichung', f: v => sgn(v, 1) + ' ' + unit}]});
+  };
+  esChart('chEsH', es, 'ms'); esChart('chEsR', er, 'bpm');
+}
+
+/* ---------------- Schlaf */
+function pageSchlaf(el) {
+  const rg = rangeIdx(), x = xDates(rg), days = sl(D, rg);
+  const dur = days.map(d => d.slDur ?? null);
+  const school = days.filter(d => !HOLNAME[d.d]);
+  const bedSd = sdOf(days.map(d => d.slStart)), wakeSd = sdOf(days.map(d => d.slEnd));
+  const free = days.map((d, j) => [d, MID[rg[0] + j]]).filter(([d, m]) => m != null && (wday(d.d) >= 5 || HOLNAME[d.d]));
+  const work = days.map((d, j) => [d, MID[rg[0] + j]]).filter(([d, m]) => m != null && wday(d.d) < 5 && !HOLNAME[d.d]);
+  const mFree = meanOf(free.map(p => p[1])), mWork = meanOf(work.map(p => p[1]));
+  const sjl = mFree != null && mWork != null ? mFree - mWork : null;
+  const debt = DEBT[rg[1]];
+  // Wochentagstabelle
+  const rows = WD.map((w, k) => {
+    const cell = arr => { const n = arr.length; if (!n) return '<td>–</td><td>–</td><td>–</td><td>–</td>'; return `<td>${hdur(meanOf(arr.map(d => d.slDur)))}</td><td>${hm(meanOf(arr.map(d => d.slStart)))}</td><td>${hm(meanOf(arr.map(d => d.slEnd)))}</td><td>${fmt(meanOf(arr.map(d => d.slScore)))} <span class="mut">(${n})</span></td>`; };
+    const sel = days.filter(d => d.slDur != null && wday(d.d) === k);
+    return `<tr><td>Nacht auf ${w}</td>${cell(sel.filter(d => !HOLNAME[d.d]))}${cell(sel.filter(d => HOLNAME[d.d]))}</tr>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="kpis k4">
+      ${kpi('Ø Schlafdauer', hdur(meanOf(dur)), `Bedarf Ø ${hdur(meanOf(days.map(d => d.slNeed || (d.slDur != null ? 8 : null))))}`)}
+      ${kpi('Ø Schlafscore', fmt(meanOf(days.map(d => d.slScore))), `Schulzeit ${fmt(meanOf(school.map(d => d.slScore)))} · Ferien ${fmt(meanOf(days.filter(d => HOLNAME[d.d]).map(d => d.slScore)))}`)}
+      ${kpi('Schlafschuld (14 Tage)', hdur(debt), 'bis zum Ende des Zeitraums', debt == null ? '' : debt > 5 ? 'bad' : debt > 2 ? 'warn' : 'good')}
+      ${kpi('Social Jetlag', sjl == null ? '–' : hdur(Math.abs(sjl)), sjl == null ? '' : `Wochenende/Ferien ${sjl >= 0 ? 'später' : 'früher'} als Schultage`, sjl == null ? '' : Math.abs(sjl) > 2 ? 'bad' : Math.abs(sjl) > 1 ? 'warn' : 'good')}
+      ${kpi('Streuung Einschlafen', bedSd == null ? '–' : '± ' + fmt(bedSd * 60) + ' <small>min</small>', `Ø ${hm(meanOf(days.map(d => d.slStart)))}`)}
+      ${kpi('Streuung Aufwachen', wakeSd == null ? '–' : '± ' + fmt(wakeSd * 60) + ' <small>min</small>', `Ø ${hm(meanOf(days.map(d => d.slEnd)))}`)}
+      ${kpi('Nächte < 7 h', fmt(dur.filter(v => v != null && v < 7).length), `von ${fmt(dur.filter(v => v != null).length)}`)}
+      ${kpi('Ø Tief / REM', `${hdur(meanOf(days.map(d => d.slDeep)))}`, `REM ${hdur(meanOf(days.map(d => d.slRem)))}`)}
+    </div>
+    <div class="grid" style="margin-top:12px">
+      ${card('Schlafdauer und Phasen', div('chSl'), 'Gestapelt: Tief, REM, Leicht, Wach. Linie: Schlafbedarf laut Garmin (sonst 8 h).')}
+      <div class="grid c2">
+        ${card('Schlafscore', div('chScore'))}
+        ${card('Schlafschuld (rollend 14 Tage)', div('chDebt'), 'Summe aus (Bedarf − Schlaf) der letzten 14 Nächte. Über 0 = Schuld, unter 0 = Polster.')}
+        ${card('Einschlafzeit', div('chBed'))}
+        ${card('Aufwachzeit', div('chWake'))}
+      </div>
+      ${card('Wochentage: Schulzeit vs. Ferien', `<div class="tw"><table><tr><th></th><th colspan="4">Schulzeit</th><th colspan="4">Ferien</th></tr><tr><th>Nacht</th><th>Dauer</th><th>ein</th><th>auf</th><th>Score (n)</th><th>Dauer</th><th>ein</th><th>auf</th><th>Score (n)</th></tr>${rows}</table></div>`, 'Wochenenden direkt vor/nach Ferien zählen zu den Ferien.')}
+    </div>`;
+  const phase = k => days.map(d => d[k] ?? null);
+  chart('chSl', {x, time: true, h: 230, yf: v => fmt(v) + ' h', series: [
+    {type: 'stack', parts: [{v: phase('slDeep'), c: 'deep', label: 'Tief', f: hdur}, {v: phase('slRem'), c: 'rem', label: 'REM', f: hdur}, {v: phase('slLight'), c: 'light', label: 'Leicht', f: hdur}, {v: phase('slAwake'), c: 'awake', label: 'Wach', f: hdur}]},
+    {type: 'line', v: days.map(d => d.slDur != null ? (d.slNeed || 8) : null), c: 'c4', w: 1.6, dash: '4 3', label: 'Bedarf', f: hdur},
+    {type: 'line', v: dur, c: 'text', noTip: false, w: 0, op: 0, label: 'Gesamt', f: hdur, noLeg: true}]});
+  chart('chScore', {x, time: true, h: 190, series: [{type: 'pts', v: phase('slScore'), c: 'c5', r: 2, label: 'Score', f: v => fmt(v)}, {type: 'line', v: days.map((_, j) => backMean(S.slScore.v, rg[0] + j, 7, 3)), c: 'c5', w: 2, label: '7-Tage-Mittel', f: v => fmt(v)}]});
+  chart('chDebt', {x, time: true, h: 190, zero: true, yf: v => fmt(v) + ' h', series: [{type: 'bar', v: sl(DEBT, rg), cf: v => v > 0 ? 'bad' : 'good', label: 'Schlafschuld', f: hdur, legC: 'bad'}]});
+  chart('chBed', {x, time: true, h: 170, yf: hm, series: [{type: 'pts', v: phase('slStart'), c: 'c5', r: 2, label: 'Eingeschlafen', f: hm}, {type: 'line', v: days.map((_, j) => backMean(ser('slStart'), rg[0] + j, 7, 3)), c: 'c5', w: 2, label: '7-Tage-Mittel', f: hm}]});
+  chart('chWake', {x, time: true, h: 170, yf: hm, series: [{type: 'pts', v: phase('slEnd'), c: 'c4', r: 2, label: 'Aufgewacht', f: hm}, {type: 'line', v: days.map((_, j) => backMean(ser('slEnd'), rg[0] + j, 7, 3)), c: 'c4', w: 2, label: '7-Tage-Mittel', f: hm}]});
+}
+
+/* ---------------- Training */
+function pageTraining(el) {
+  const rg = rangeIdx(), x = xDates(rg), from = x[0], to = x[x.length - 1];
+  const acts = RAW.acts.filter(a => a.d >= from && a.d <= to);
+  const i = rg[1];
+  // Monate Zonen
+  const months = {}, weeks = {};
+  for (const a of acts) {
+    const m = a.d.slice(0, 7); months[m] = months[m] || [0, 0, 0, 0, 0];
+    (a.z || []).forEach((v, k) => months[m][k] += v || 0);
+  }
+  const mk = Object.keys(months).sort();
+  // Wochen (Mo)
+  for (let d = addDays(from, -wday(from)); d <= to; d = addDays(d, 7)) weeks[d] = 0;
+  for (const a of acts) if (/strength/.test(a.type)) { const wk = addDays(a.d, -wday(a.d)); if (wk in weeks) weeks[wk]++; }
+  const wk = Object.keys(weeks).sort();
+  const nWeeks = Math.max(1, (rg[1] - rg[0] + 1) / 7);
+  const strCount = acts.filter(a => /strength/.test(a.type)).length;
+  const runs = acts.filter(a => isRun(a.type) && a.dist > 0.5 && a.hr);
+  const econ = runs.map(a => ({a, mpb: a.dist * 1000 / (a.hr * a.dur), pace: a.dur / a.dist}));
+  const tsb = TSB[i];
+  el.innerHTML = `
+    <div class="kpis k4">
+      ${kpi('ACWR', fmt(ACWR[i], 2), ACWR[i] == null ? '' : ACWR[i] > 1.5 ? 'über 1,5: Überlastung' : ACWR[i] > 1.3 ? 'erhöht' : ACWR[i] < 0.8 ? 'unter 0,8: Entlastung' : 'im Zielband 0,8–1,3', ACWR[i] == null ? '' : ACWR[i] > 1.5 ? 'bad' : ACWR[i] > 1.3 || ACWR[i] < 0.8 ? 'warn' : 'good')}
+      ${kpi('Fitness (CTL)', fmt(CTL[i]), `Ermüdung (ATL) ${fmt(ATL[i])}`)}
+      ${kpi('Form (TSB)', sgn(tsb), tsb > 5 ? 'frisch' : tsb < -20 ? 'stark ermüdet' : tsb < -10 ? 'ermüdet (Aufbau)' : 'neutral', tsb < -20 ? 'bad' : tsb > 5 ? 'good' : '')}
+      ${kpi('Krafttrainings / Woche', fmt(strCount / nWeeks, 1), `${strCount} im Zeitraum`)}
+      ${kpi('Ø TRIMP / Woche', fmt(sl(TR, rg).reduce((a, b) => a + b, 0) / nWeeks), `${acts.length} Aktivitäten`)}
+      ${kpi('Ø Dauer Krafttraining', fmt(meanOf(acts.filter(a => /strength/.test(a.type)).map(a => a.dur))) + ' <small>min</small>', `Ø ${fmt(meanOf(acts.filter(a => /strength/.test(a.type)).map(a => a.sets)))} Sätze`)}
+      ${kpi('Läufe', fmt(runs.length), runs.length ? `Ø ${fmt(meanOf(econ.map(e => e.mpb)), 2)} m/Schlag` : 'keine im Zeitraum')}
+      ${kpi('Intensitätsminuten / Woche', fmt(sl(D, rg).reduce((a, d) => a + (d.im || 0), 0) / nWeeks), 'WHO-Ziel: 150')}
+    </div>
+    <div class="grid" style="margin-top:12px">
+      ${card('Tageslast (Edwards-TRIMP)', div('chTr'), 'TRIMP = Minuten in Pulszone 1–5 × Faktor 1–5. Krafttraining wird damit eher unterschätzt, da Puls nur einen Teil der Belastung abbildet.')}
+      ${card('ACWR (akut : chronisch)', div('chAc'), 'Mittel der letzten 7 Tage geteilt durch Mittel der letzten 28 Tage. Grünes Band 0,8–1,3 gilt als günstig, über 1,5 (rote Linie) steigt das Überlastungsrisiko.')}
+      ${card('Fitness, Ermüdung, Form (Banister)', div('chBan'), 'Fitness (CTL) = 42-Tage-Durchschnitt der Last (exponentiell), Ermüdung (ATL) = 7 Tage. Form = Fitness − Ermüdung. Negativ = gerade im Aufbau/ermüdet, positiv = erholt.')}
+      <div class="grid c2">
+        ${card('Pulszonen pro Monat', div('chZones'), 'Minuten in Zone 1–5 aus allen Aktivitäten.')}
+        ${card('Krafttrainings pro Woche', div('chStr'))}
+      </div>
+      ${econ.length ? card('Laufökonomie', (econ.length >= 3 ? div('chEcon') : '') + `<div class="tw"><table><tr><th>Datum</th><th>km</th><th>Pace</th><th>Ø Puls</th><th>m / Herzschlag</th></tr>${econ.slice().reverse().map(e => `<tr><td>${dayLink(e.a.d)}</td><td>${fmt(e.a.dist, 2)}</td><td>${Math.floor(e.pace)}:${String(Math.round((e.pace % 1) * 60)).padStart(2, '0')} /km</td><td>${fmt(e.a.hr)}</td><td>${fmt(e.mpb, 2)}</td></tr>`).join('')}</table></div>`, 'Meter pro Herzschlag = Distanz ÷ (Ø Puls × Minuten). Höher = ökonomischer. Nur vergleichbar bei ähnlichem Tempo und Gelände.') : ''}
+      ${card('Letzte Aktivitäten', `<div class="tw"><table><tr><th>Datum</th><th>Typ</th><th>Dauer</th><th>Ø/Max Puls</th><th>kcal</th><th>TRIMP</th><th>Sätze/Wdh.</th></tr>${acts.slice(-20).reverse().map(a => `<tr><td>${dayLink(a.d)} ${a.t || ''}</td><td>${esc(typeName(a.type))}</td><td>${fmt(a.dur)} min</td><td>${fmt(a.hr)}/${fmt(a.hrMax)}</td><td>${fmt(a.kcal)}</td><td>${fmt(actTrimp(a))}</td><td>${a.sets ? fmt(a.sets) + '/' + fmt(a.reps) : a.dist ? fmt(a.dist, 1) + ' km' : '–'}</td></tr>`).join('')}</table></div>`)}
+    </div>`;
+  chart('chTr', {x, time: true, h: 200, series: [{type: 'bar', v: sl(TR, rg), c: 'c3', label: 'TRIMP', f: v => fmt(v)}, {type: 'line', v: x.map((_, j) => backMean(TR, rg[0] + j, 7)), c: 'c4', w: 2, label: '7-Tage-Mittel', f: v => fmt(v)}],
+    extraTip: j => { const ds = x[j], aa = acts.filter(a => a.d === ds); return aa.map(a => ['muted', typeName(a.type), fmt(a.dur) + ' min']); }});
+  chart('chAc', {x, time: true, h: 190, yb: [{y0: 0.8, y1: 1.3, c: 'var(--goodbg)'}], hl: [{y: 1.5, c: 'bad', l: '1,5'}], series: [{type: 'line', v: sl(ACWR, rg), c: 'c1', w: 2, label: 'ACWR', f: v => fmt(v, 2)}]});
+  chart('chBan', {x, time: true, h: 220, zero: true, series: [{type: 'bar', v: sl(TSB, rg), cf: v => v >= 0 ? 'good' : 'bad', op: .45, label: 'Form (TSB)', f: v => sgn(v), legC: 'good'}, {type: 'line', v: sl(CTL, rg), c: 'c1', w: 2.2, label: 'Fitness (CTL)', f: v => fmt(v)}, {type: 'line', v: sl(ATL, rg), c: 'c2', w: 1.6, label: 'Ermüdung (ATL)', f: v => fmt(v)}]});
+  chart('chZones', {x: mk, xl: mk.map(m => MON[+m.slice(5) - 1] + ' ' + m.slice(2, 4)), xw: 46, h: 200, yf: v => fmt(v), series: [{type: 'stack', parts: [1, 2, 3, 4, 5].map(z => ({v: mk.map(m => months[m][z - 1]), c: 'z' + z, label: 'Zone ' + z, f: v => fmt(v) + ' min'}))}]});
+  chart('chStr', {x: wk, xl: wk.map(d => fdate(d, false)), xw: 46, h: 200, tt: j => 'Woche ab ' + fdate(wk[j], true), series: [{type: 'bar', v: wk.map(w => weeks[w]), c: 'c3', label: 'Krafttrainings', f: v => fmt(v)}, {type: 'line', v: wk.map((_, j) => meanOf(wk.slice(Math.max(0, j - 3), j + 1).map(w => weeks[w]))), c: 'c4', w: 2, label: '4-Wochen-Mittel', f: v => fmt(v, 1)}]});
+  if (econ.length >= 3) chart('chEcon', {x: econ.map(e => e.a.d), xl: econ.map(e => fdate(e.a.d)), xw: 60, h: 180, tt: j => fdate(econ[j].a.d, true), series: [{type: 'line', v: econ.map(e => e.mpb), c: 'c3', w: 2, dots: true, r: 3.5, label: 'm/Schlag', f: v => fmt(v, 2)}]});
+}
+
+/* ---------------- Körper */
+function pageKoerper(el) {
+  const wm = RAW.models.weight, rg = rangeIdx(), from = D[rg[0]].d, to = D[rg[1]].d;
+  if (!wm || wm.error) { el.innerHTML = card('Körper', `<p>${esc(wm ? wm.error : 'Keine Gewichtsdaten.')}</p>`); return; }
+  const eta = wm.eta, ws = RAW.weights.filter(w => w.d >= from && w.d <= to), last = RAW.weights[RAW.weights.length - 1];
+  const trend = {}; for (const t of wm.trend) trend[t[0]] = t;
+  const t28 = wm.trend.length > 28 ? (wm.trend[wm.trend.length - 1][1] - wm.trend[wm.trend.length - 29][1]) / 4 : null;
+  const pct = eta.level ? [0.0025 * eta.level, 0.005 * eta.level] : null;
+  const rate = eta.slopeWeek;
+  const rateCls = pct ? (rate < pct[0] * 0.5 ? 'bad' : rate < pct[0] ? 'warn' : rate > pct[1] * 1.5 ? 'warn' : 'good') : '';
+  const horizon = state.range === 'all' ? 120 : 90;
+  const fc = wm.fc.slice(0, horizon);
+  const x = [];
+  for (let d = from; d <= to; d = addDays(d, 1)) x.push(d);
+  const showFc = to === D[N - 1].d;
+  if (showFc) for (const f of fc) if (f[0] > to) x.push(f[0]);
+  const fcm = {}; for (const f of fc) fcm[f[0]] = f;
+  const wmap = W_BY_DATE;
+  el.innerHTML = `
+    <div class="kpis k4">
+      ${kpi('Trendgewicht', fmt(eta.level, 1) + ' <small>kg</small>', last ? `letzte Wiegung ${fmt(last.kg, 1)} kg (${fdate(last.d)})` : '')}
+      ${kpi('Rate (Kalman)', sgn(rate, 2) + ' <small>kg/Woche</small>', `± ${fmt(eta.slopeWeekCI, 2)} · 4 Wochen: ${sgn(t28, 2)}`, rateCls)}
+      ${wm.target == null ? kpi('Zielgewicht', '–', 'in personal.json festlegen') : kpi('Ziel ' + fmt(wm.target) + ' kg', eta.status === 'erreicht' ? 'erreicht' : eta.date ? fdate(eta.date, true) : 'offen', eta.status === 'erreicht' ? '' : eta.date ? `Spanne ${eta.early ? fdate(eta.early) : '?'} – ${eta.late ? fdate(eta.late) : 'offen'}` : 'bei aktuellem Trend nicht absehbar')}
+      ${kpi('Noch bis Ziel', wm.target == null ? '–' : fmt(Math.max(0, wm.target - eta.level), 1) + ' <small>kg</small>', pct ? `Faustregel Aufbau: ${fmt(pct[0], 2)}–${fmt(pct[1], 2)} kg/Woche` : '')}
+      ${kpi('Muskelmasse', last && last.muscle ? fmt(last.muscle, 1) + ' <small>kg</small>' : '–', 'letzte Messung')}
+      ${kpi('Körperfett', last && last.fat ? fmt(last.fat, 1) + ' <small>%</small>' : '–', 'letzte Messung')}
+      ${kpi('Wiegungen im Zeitraum', fmt(ws.length), ws.length ? `alle ${fmt((rg[1] - rg[0] + 1) / ws.length, 1)} Tage` : '')}
+      ${kpi('Prognosefehler', fmt(wm.maeModel, 2) + ' <small>kg</small>', `naiv (letzte Wiegung): ${fmt(wm.maeNaive, 2)} kg`)}
+    </div>
+    <div class="grid" style="margin-top:12px">
+      ${card('Gewicht', div('chKg'), `Punkte = Wiegungen. Linie = geglätteter Trend (Kalman-Filter mit Glättung), dunkles Band = Unsicherheit des Trends. Rechts: Prognose${showFc ? '' : ' (nur sichtbar, wenn der Zeitraum bis heute reicht)'} mit 95-%-Band für den Trend; der hellere Bereich zeigt, wo einzelne Wiegungen landen dürften. Rate-Faustregel für Masseaufbau: etwa 0,25–0,5 % des Körpergewichts pro Woche.`)}
+      <div class="grid c2">
+        ${card('Muskelmasse', div('chMus'), 'Waagen mit Bioimpedanz schätzen Muskelmasse und Fett nur ungefähr – auf den Trend schauen, nicht auf Einzelwerte.')}
+        ${card('Körperfett', div('chFat'))}
+      </div>
+    </div>`;
+  const kf = v => fmt(v, 1) + ' kg';
+  chart('chKg', {x, time: true, h: 260, hl: wm.target == null ? [] : [{y: wm.target, c: 'good', l: 'Ziel ' + fmt(wm.target) + ' kg'}], series: [
+    {type: 'band', lo: x.map(d => fcm[d] && d > to ? fcm[d][1] - fcm[d][3] : null), hi: x.map(d => fcm[d] && d > to ? fcm[d][1] + fcm[d][3] : null), c: 'c4', op: .10, label: 'Wiegung erwartet', f: kf, noLeg: true},
+    {type: 'band', lo: x.map(d => trend[d] ? trend[d][1] - 1.96 * trend[d][2] : fcm[d] && d > to ? fcm[d][1] - fcm[d][2] : null), hi: x.map(d => trend[d] ? trend[d][1] + 1.96 * trend[d][2] : fcm[d] && d > to ? fcm[d][1] + fcm[d][2] : null), c: 'c4', op: .22, label: 'Trend 95 %', f: kf},
+    {type: 'line', v: x.map(d => trend[d] && d <= to ? trend[d][1] : null), c: 'c4', w: 2.4, label: 'Trend', f: kf},
+    {type: 'line', v: x.map(d => d >= to && fcm[d] ? fcm[d][1] : d === to && trend[d] ? trend[d][1] : null), c: 'c4', w: 2, dash: '5 4', label: 'Prognose', f: kf},
+    {type: 'pts', v: x.map(d => wmap[d] ? wmap[d].kg : null), c: 'c1', r: 2.8, label: 'Wiegung', f: kf}],
+    extraTip: j => trend[x[j]] ? [['muted', 'Rate', sgn(trend[x[j]][3], 2) + ' kg/Wo']] : null});
+  const xx = []; for (let d = from; d <= to; d = addDays(d, 1)) xx.push(d);
+  const roll = (k) => { const arr = RAW.weights.filter(w => w[k] != null); return xx.map(d => { const prev = arr.filter(w => w.d <= d).slice(-7); return prev.length >= 3 && dayDiff(prev[prev.length - 1].d, d) < 21 ? meanOf(prev.map(w => w[k])) : null; }); };
+  chart('chMus', {x: xx, time: true, h: 190, series: [{type: 'pts', v: xx.map(d => wmap[d] ? wmap[d].muscle ?? null : null), c: 'c3', label: 'Messung', f: kf}, {type: 'line', v: roll('muscle'), c: 'c3', w: 2, label: 'Mittel der letzten 7 Messungen', f: kf}]});
+  chart('chFat', {x: xx, time: true, h: 190, series: [{type: 'pts', v: xx.map(d => wmap[d] ? wmap[d].fat ?? null : null), c: 'c2', label: 'Messung', f: v => fmt(v, 1) + ' %'}, {type: 'line', v: roll('fat'), c: 'c2', w: 2, label: 'Mittel der letzten 7 Messungen', f: v => fmt(v, 1) + ' %'}]});
+}
+
+/* ---------------- Zusammenhänge */
+const CORR_VARS = ['hrv', 'rhr', 'slDur', 'slScore', 'slDeep', 'slRem', 'slStart', 'slEnd', 'stress', 'steps', 'bbMax', 'bbCh', 'kcalA', 'im', 'trimp', 'resp', 'spo2', 'kg', 'acwr', 'tsb', 'debt', 'hol'];
+const CORR_GROUP = {trimp: 'load', im: 'load', kcalA: 'load', acwr: 'load', tsb: 'load', steps: 'load',
+  slDur: 'sleep', slScore: 'sleep', slDeep: 'sleep', slRem: 'sleep', slStart: 'sleep', slEnd: 'sleep', debt: 'sleep', bbMax: 'bb', bbCh: 'bb'};
+function corrPairs(rg) {
+  const vals = {}; for (const k of CORR_VARS) vals[k] = [];
+  for (let i = rg[0]; i <= rg[1]; i++) for (const k of CORR_VARS) vals[k].push(metVal(k, i));
+  const nxt = {}; for (const k of CORR_VARS) { nxt[k] = []; for (let i = rg[0]; i <= rg[1]; i++) nxt[k].push(i + 1 < N ? metVal(k, i + 1) : null); }
+  const out = [];
+  CORR_VARS.forEach((a, ia) => CORR_VARS.forEach((b, ib) => {
+    if (a === b || b === 'hol') return; // Ferien nur als X
+    if (CORR_GROUP[a] && CORR_GROUP[a] === CORR_GROUP[b]) return; // rechnerisch verknüpft
+    for (const lag of [0, 1]) {
+      if (lag === 0 && a !== 'hol' && ib < ia) continue; // gleicher Tag: jedes Paar nur einmal
+      const p = pearson(vals[a], lag ? nxt[b] : vals[b]);
+      if (p.r != null && p.n >= 30) out.push({...p, a, b, lag});
+    }
+  }));
+  return out;
+}
+function pageZusammen(el) {
+  const rg = rangeIdx();
+  const opts = sel => CORR_VARS.map(k => `<option value="${k}"${k === sel ? ' selected' : ''}>${MET[k].l}</option>`).join('');
+  const pairs = corrPairs(rg).sort((p, q) => Math.abs(q.r) - Math.abs(p.r));
+  const bonf = 0.05 / Math.max(1, pairs.length);
+  const top = pairs.slice(0, 18);
+  el.innerHTML = `
+    <div class="grid">
+      ${card('Streudiagramm', `<div class="row"><label>X <select id="cx">${opts(state.cx)}</select></label><label>Y <select id="cy">${opts(state.cy)}</select></label>
+        <select id="lag"><option value="0"${state.lag == 0 ? ' selected' : ''}>gleicher Tag</option><option value="1"${state.lag == 1 ? ' selected' : ''}>Y am Folgetag</option></select></div>
+        <div id="corrStat" style="margin:8px 0 0"></div>${div('chSc')}`, 'Orange Punkte = Ferientage. Linie = lineare Regression. Korrelation heißt nicht Ursache – beide Werte können von einem dritten abhängen (z. B. Klausurphase).')}
+      ${card('Stärkste Zusammenhänge im Zeitraum', `<div class="tw"><table><tr><th>X → Y</th><th>r</th><th>n</th><th>p</th></tr>${top.map((p, j) => `<tr class="click" data-j="${j}"><td style="white-space:normal">${MET[p.a].l} → ${MET[p.b].l}${p.lag ? ' <span class="pill">Folgetag</span>' : ''}</td><td class="${p.r > 0 ? 'good' : 'bad'}">${sgn(p.r, 2)}</td><td>${p.n}</td><td>${fmtP(p.p)}${p.p < bonf ? ' ✓' : ''}</td></tr>`).join('')}</table></div>`,
+        `${pairs.length} Kombinationen getestet. ✓ = auch nach Bonferroni-Korrektur signifikant (p < ${String(+bonf.toPrecision(2)).replace('.', ',')}). Bei so vielen Tests sind einige „signifikante“ Treffer Zufall. Paare, die rechnerisch zusammenhängen (z. B. Schlafdauer–Schlafscore, TRIMP–ACWR), sind ausgeblendet; im Streudiagramm kannst du sie trotzdem wählen. Zeile antippen = ins Streudiagramm übernehmen.`)}
+      ${card('Saisonvergleich', `<div class="row"><select id="season">${['hrv', 'rhr', 'slDur', 'slScore', 'stress', 'steps', 'trimp', 'kg', 'resp', 'bbMax'].map(k => `<option value="${k}"${k === state.season ? ' selected' : ''}>${MET[k].l}</option>`).join('')}</select></div>${div('chSeason')}`, 'Monatsmittel je Jahr über die gesamte Historie (unabhängig vom Zeitraumfilter).')}
+    </div>`;
+  const draw = () => {
+    const kx = state.cx, ky = state.cy, lag = +state.lag, pts = [];
+    for (let i = rg[0]; i <= rg[1]; i++) { const a = metVal(kx, i), b = metVal(ky, i + lag); if (a != null && b != null && (lag === 0 || i + 1 < N)) pts.push([a, b, D[i].d]); }
+    const p = pearson(pts.map(q => q[0]), pts.map(q => q[1]));
+    $('#corrStat').innerHTML = p.r == null ? '<span class="mut">Zu wenige gemeinsame Werte.</span>' :
+      `<span class="pill">r = ${fmt(p.r, 2)}</span> <span class="pill">n = ${p.n}</span> <span class="pill">p ${p.p < 0.001 ? '' : '= '}${fmtP(p.p)}</span> <span class="pill">Steigung ${fmt(p.b, 3)}</span>
+       <p class="note">${strength(p.r)}${Math.abs(p.r) >= 0.1 ? (p.r > 0 ? ' positiver' : ' negativer') : 'er'} Zusammenhang${p.p < 0.05 ? ', statistisch signifikant (p < 0,05)' : ', nicht signifikant'}. ${Math.abs(p.r) >= 0.1 ? `Pro +1 bei „${MET[kx].l}“ ändert sich „${MET[ky].l}“${lag ? ' am Folgetag' : ''} im Mittel um ${sgn(p.b, Math.abs(p.b) < 0.1 ? 3 : 2)}.` : ''}</p>`;
+    scatter('chSc', {pts, xl: MET[kx].l + (lag ? ' (Tag 0)' : ''), yl: MET[ky].l + (lag ? ' (Folgetag)' : ''), fx: (v, ax) => ax ? (MET[kx].f ? MET[kx].f(v).replace(' h', '') : fmt(v, Math.abs(v) < 10 && v % 1 ? 1 : 0)) : metFmt(kx, v), fy: (v, ax) => ax ? (MET[ky].f ? MET[ky].f(v).replace(' h', '') : fmt(v, Math.abs(v) < 10 && v % 1 ? 1 : 0)) : metFmt(ky, v), fit: p.r != null ? {a: p.a, b: p.b} : null});
+  };
+  const save = () => { store.set('cx', state.cx); store.set('cy', state.cy); store.set('lag', state.lag); draw(); };
+  $('#cx').onchange = e => { state.cx = e.target.value; save(); };
+  $('#cy').onchange = e => { state.cy = e.target.value; save(); };
+  $('#lag').onchange = e => { state.lag = +e.target.value; save(); };
+  el.querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { const p = top[+tr.dataset.j]; state.cx = p.a; state.cy = p.b; state.lag = p.lag; $('#cx').value = p.a; $('#cy').value = p.b; $('#lag').value = p.lag; save(); $('#cx').scrollIntoView({behavior: 'smooth', block: 'center'}); });
+  draw();
+  const season = () => {
+    const k = state.season, by = {};
+    for (let i = 0; i < N; i++) { const v = metVal(k, i); if (v == null) continue; const y = D[i].d.slice(0, 4), m = +D[i].d.slice(5, 7) - 1; (by[y] = by[y] || Array.from({length: 12}, () => [])); by[y][m].push(v); }
+    const years = Object.keys(by).sort(), cs = ['c6', 'c1', 'c2', 'c3', 'c4', 'c5'];
+    chart('chSeason', {x: MON, h: 210, series: years.map((y, j) => ({type: 'line', v: by[y].map(a => a.length >= 5 ? meanOf(a) : null), c: cs[(j + cs.length - years.length) % cs.length] , w: j === years.length - 1 ? 2.6 : 1.8, dots: true, r: 2.6, label: y, f: v => metFmt(k, v)}))});
+  };
+  $('#season').onchange = e => { state.season = e.target.value; store.set('season', state.season); season(); };
+  season();
+}
+
+/* ---------------- Prognosen */
+function verdict(m) {
+  const best = Math.min(m.maeNaive1, m.maeNaive7), gain = 1 - m.maeModel / best;
+  if (gain >= 0.1) return ['good', `Das Modell ist ${fmt(gain * 100)} % genauer als die beste naive Prognose.`];
+  if (gain > 0) return ['warn', `Das Modell ist nur ${fmt(gain * 100)} % besser als die naive Prognose – kaum Mehrwert.`];
+  return ['bad', `Das Modell ist <b>nicht besser</b> als die naive Prognose (${m.maeNaive1 <= m.maeNaive7 ? '„wie gestern“' : '„7-Tage-Mittel“'}). Verlass dich nicht darauf.`];
+}
+function pagePrognosen(el) {
+  const M = RAW.models, rg = rangeIdx(), from = D[rg[0]].d, to = D[rg[1]].d;
+  const block = (m, key, name, unit) => {
+    if (!m || m.error) return card(name + ' morgen', `<p class="note">${esc(m ? m.error : 'Kein Modell.')}</p>`);
+    const [c, t] = verdict(m);
+    const maxW = Math.max(...m.coefs.map(q => Math.abs(q.w))) || 1;
+    return card(`${name} – Nacht auf ${WDL[wday(m.target)]}, ${fdate(m.target, true)}`, `
+      <div class="kpis"><div class="kpi"><div class="l">Prognose</div><div class="v">${fmt(m.pred)} <small>± ${fmt(m.pi)} ${unit}</small></div><div class="s">95-%-Intervall aus den Testfehlern</div></div>
+      ${kpi('Fehler Modell (MAE)', fmt(m.maeModel, 1) + ' <small>' + unit + '</small>', `Test: ${m.nTest} Nächte ab ${fdate(m.testFrom)}`)}
+      ${kpi('Fehler naiv', fmt(m.maeNaive1, 1) + ' / ' + fmt(m.maeNaive7, 1) + ' <small>' + unit + '</small>', '„wie gestern“ / „7-Tage-Mittel“')}</div>
+      <div class="alert ${c}">${t}</div>
+      ${div('chP' + key)}
+      <h3>Wichtigste Einflussgrößen</h3>
+      <div class="tw"><table>${m.coefs.slice(0, 6).map(q => `<tr><td>${esc(q.name)}</td><td style="width:45%"><div class="bar"><span style="${q.w >= 0 ? 'left:50%' : 'right:50%'};width:${Math.abs(q.w) / maxW * 50}%;background:var(--${q.w >= 0 ? 'c1' : 'c2'})"></span></div></td><td>${sgn(q.w, 2)} ${unit}</td></tr>`).join('')}</table></div>`,
+      `Ridge-Regression (λ = ${m.lambda}) auf standardisierten Merkmalen, Walk-Forward: das Modell wird wöchentlich nur mit Vergangenheitsdaten neu trainiert und sagt jeweils die nächste Nacht voraus. Koeffizient = Änderung der Prognose, wenn das Merkmal um 1 Standardabweichung steigt (bei sonst gleichen Werten). Korrelierte Merkmale teilen sich den Effekt.`);
+  };
+  const ss = M.sleepScore, wm = M.weight;
+  el.innerHTML = `
+    <p class="note">Modelllauf: ${M.run.replace('T', ' ')} Uhr (im Python-Skript vorberechnet).</p>
+    <div class="grid c2">${block(M.hrv, 'hrv', 'HRV', 'ms')}${block(M.rhr, 'rhr', 'Ruhepuls', 'bpm')}</div>
+    <div class="grid c2" style="margin-top:12px">
+      ${wm && !wm.error ? card('Gewicht – nächste 14 Tage', div('chPkg') + `<p class="note">Fehler Ein-Schritt-Prognose: Kalman ${fmt(wm.maeModel, 2)} kg vs. naiv „letzte Wiegung“ ${fmt(wm.maeNaive, 2)} kg → ${wm.maeModel < wm.maeNaive ? '<span class="good">Modell besser</span>' : '<span class="bad">Modell nicht besser</span>'}.</p>`, 'Lokales lineares Trendmodell (Kalman), Band = 95 % für eine einzelne Wiegung. Einflussgrößen: nur der bisherige Trend – Ernährung kennt das Modell nicht.') : ''}
+      ${ss && !ss.error ? card('Schlafscore – nächste 7 Tage', div('chPss') + `<p class="note">Fehler (letzte 180 Tage): Holt-Winters ${fmt(ss.maeModel, 1)} vs. naiv „7-Tage-Mittel“ ${fmt(ss.maeNaive7, 1)} → ${ss.maeModel < ss.maeNaive7 ? '<span class="good">Modell besser</span>' : '<span class="bad">Modell nicht besser</span>'}.</p>`, `Holt-Winters mit Wochenrhythmus (α = ${fmt(ss.params[0], 2)}, β = ${fmt(ss.params[1], 2)}, γ = ${fmt(ss.params[2], 2)}). Einflussgrößen: Niveau, Trend und Wochentagsmuster deiner bisherigen Scores. Ein großes γ heißt: der Wochentag spielt eine Rolle.`) : ''}
+    </div>`;
+  for (const [key, unit] of [['hrv', 'ms'], ['rhr', 'bpm']]) {
+    const m = M[key]; if (!m || m.error) continue;
+    const s = m.series.filter(r => r[0] >= from && r[0] <= addDays(to, 1));
+    const x = s.map(r => r[0]);
+    const f = v => fmt(v, 1) + ' ' + unit;
+    chart('chP' + key, {x, time: true, h: 200, series: [{type: 'pts', v: s.map(r => r[1]), c: 'c6', r: 2.2, label: 'gemessen', f}, {type: 'line', v: s.map(r => r[2]), c: 'c1', w: 2, label: 'Modell', f}, {type: 'line', v: s.map(r => r[3]), c: 'c4', w: 1.2, dash: '3 3', label: '„wie gestern“', f}]});
+  }
+  if (wm && !wm.error) {
+    const start = addDays(D[N - 1].d, -42), x = [];
+    for (let d = start; d <= wm.fc[13][0]; d = addDays(d, 1)) x.push(d);
+    const tr = {}; for (const t of wm.trend) tr[t[0]] = t; const fc = {}; for (const f of wm.fc.slice(0, 14)) fc[f[0]] = f;
+    const kf = v => fmt(v, 1) + ' kg';
+    chart('chPkg', {x, time: true, h: 200, series: [
+      {type: 'band', lo: x.map(d => fc[d] ? fc[d][1] - fc[d][3] : null), hi: x.map(d => fc[d] ? fc[d][1] + fc[d][3] : null), c: 'c4', label: '95 % Wiegung', f: kf},
+      {type: 'line', v: x.map(d => tr[d] ? tr[d][1] : null), c: 'c4', w: 2, label: 'Trend', f: kf},
+      {type: 'line', v: x.map(d => fc[d] ? fc[d][1] : null), c: 'c4', w: 2, dash: '5 4', label: 'Prognose', f: kf},
+      {type: 'pts', v: x.map(d => W_BY_DATE[d] ? W_BY_DATE[d].kg : null), c: 'c1', r: 3, label: 'Wiegung', f: kf}]});
+  }
+  if (ss && !ss.error) {
+    const start = addDays(D[N - 1].d, -41), x = [];
+    for (let d = start; d <= ss.fc[ss.fc.length - 1][0]; d = addDays(d, 1)) x.push(d);
+    const fc = {}; for (const f of ss.fc) fc[f[0]] = f;
+    chart('chPss', {x, time: true, h: 200, series: [
+      {type: 'band', lo: x.map(d => fc[d] ? Math.max(0, fc[d][2]) : null), hi: x.map(d => fc[d] ? Math.min(100, fc[d][3]) : null), c: 'c5', label: '95-%-Intervall', f: v => fmt(v)},
+      {type: 'line', v: x.map(d => fc[d] ? fc[d][1] : null), c: 'c5', w: 2, dash: '5 4', dots: true, label: 'Prognose', f: v => fmt(v)},
+      {type: 'line', v: x.map(d => IDX[d] != null ? D[IDX[d]].slScore ?? null : null), c: 'c5', w: 1.5, dots: true, label: 'gemessen', f: v => fmt(v)}]});
+  }
+}
+
+/* ---------------- Methodik */
+function pageMethodik(el) {
+  const cnt = k => D.filter(d => d[k] != null).length;
+  const items = [
+    ['Readiness-Score (0–100)', 'Für HRV, Ruhepuls, Schlafdauer, Schlafscore und die Trainingslast des Vortags wird berechnet, wie weit der heutige Wert von deinem Mittel der 28 Tage davor entfernt ist (z-Wert = Abstand ÷ Standardabweichung). Ruhepuls und Vortageslast zählen umgekehrt. Die z-Werte werden auf ±3 begrenzt, gewichtet gemittelt und auf 50 + 17 × Mittel abgebildet. 50 = ein normaler Tag für dich. Die Gewichte stellst du auf „Heute“ ein.'],
+    ['Normalbereich und auffällige Tage', 'Mittelwert ± Standardabweichung der 28 Tage vor dem jeweiligen Tag (mind. 14 Werte). Ab 2 Standardabweichungen gilt ein Tag als auffällig – das passiert bei normalverteilten Werten nur an etwa 5 % der Tage.'],
+    ['Frühwarnung', 'Mindestens zwei Werte gleichzeitig ungünstig: Ruhepuls ≥ +1,5 SD, HRV ≤ −1,5 SD, Atemfrequenz ≥ +1,5 SD, Hauttemperatur (falls die Uhr sie liefert). Solche Muster treten oft vor oder während Infekten auf, aber auch bei Stress oder Alkohol. Es ist ein Hinweis, keine Diagnose.'],
+    ['Trainingslast (Edwards-TRIMP)', 'Minuten in Pulszone 1 × 1 + Zone 2 × 2 + … + Zone 5 × 5, summiert über alle Aktivitäten eines Tages. Pulszonen kommen aus Garmin. Beim Krafttraining ist der Puls nur ein grober Stellvertreter für die Belastung.'],
+    ['ACWR', 'Acute:Chronic Workload Ratio = Ø Last der letzten 7 Tage ÷ Ø Last der letzten 28 Tage. 0,8–1,3 gilt als günstiger Bereich, über 1,5 als sprunghafte Steigerung mit höherem Überlastungsrisiko. Die Evidenz dafür ist umstritten – als grobe Orientierung nutzen.'],
+    ['Fitness, Ermüdung, Form (Banister)', 'Fitness (CTL) = exponentiell gewichteter 42-Tage-Durchschnitt der Last, Ermüdung (ATL) = dasselbe über 7 Tage, Form (TSB) = CTL − ATL. Stark negativ = viel Training in kurzer Zeit, positiv = ausgeruht.'],
+    ['Erholungskurve (Event-Study)', 'Harte Tage = Trainingstage mit Last im obersten 20-%-Bereich des gewählten Zeitraums. Für die 6 Nächte danach wird die Abweichung von HRV und Ruhepuls zum 28-Tage-Mittel vor dem harten Tag gemittelt. Das 95-%-Intervall zeigt, wie sicher der Mittelwert ist.'],
+    ['Schlafschuld', 'Summe aus (Schlafbedarf − tatsächlicher Schlaf) über die letzten 14 Nächte. Bedarf = Garmins „Schlafbedarf“, falls vorhanden, sonst 8 Stunden.'],
+    ['Schlafregelmäßigkeit und Social Jetlag', 'Standardabweichung der Einschlaf- und Aufwachzeit im Zeitraum. Social Jetlag = Unterschied der Schlafmitte zwischen freien Nächten (Nacht auf Sa/So und Ferien) und Schulnächten. Über 1 h gilt als spürbar, über 2 h als deutlich.'],
+    ['Strukturbrüche', 'Binäre Segmentierung auf Wochenmitteln: Es wird der Zeitpunkt gesucht, an dem sich das Niveau vorher und nachher am stärksten unterscheidet (t-Statistik). Ist t > 4,5 und sind beide Abschnitte mind. 4 Wochen lang, gilt das als Bruch; dann wird in beiden Teilen weitergesucht.'],
+    ['Gewichtstrend und Zielprognose', 'Lokales lineares Trendmodell mit Kalman-Filter und Rauch-Tung-Striebel-Glättung. Messrauschen und Trendänderung werden per Maximum-Likelihood aus deinen Daten geschätzt. Prognose = aktueller Trend fortgeschrieben; die Spanne bis zum Zielgewicht ergibt sich aus der Unsicherheit der Steigung (95 %).'],
+    ['Prognose HRV und Ruhepuls', 'Ridge-Regression (lineares Modell mit Strafterm gegen Überanpassung) mit Merkmalen vom Vortag: Wert und 7-Tage-Mittel, der jeweils andere Wert, Last heute und 7 Tage, Schlafdauer, Schlafscore, Stress, Atemfrequenz, Wochenende, Ferien und Klausur am Folgetag. Walk-Forward-Test: jede Prognose nutzt nur Daten aus der Vergangenheit. Vergleich mit „wie gestern“ und „7-Tage-Mittel“ über den mittleren absoluten Fehler (MAE).'],
+    ['Prognose Schlafscore', 'Holt-Winters (exponentielle Glättung mit Niveau, Trend und 7-Tage-Saison), Parameter per Gittersuche. Intervall aus der Streuung der bisherigen Ein-Schritt-Fehler.'],
+    ['Zusammenhänge', 'Pearson-Korrelation r (−1 bis +1), n = Anzahl Tage mit beiden Werten, p-Wert aus der t-Verteilung. „Folgetag“: X von Tag t, Y von Tag t+1. Bei vielen Tests werden zufällige Treffer wahrscheinlich, deshalb zusätzlich die Bonferroni-Schwelle.'],
+    ['Laufökonomie', 'Meter pro Herzschlag = Distanz ÷ (Ø Puls × Dauer in Minuten). Steigt der Wert bei ähnlichem Tempo, läufst du ökonomischer.'],
+    ['Saisonvergleich', 'Monatsmittel je Kalenderjahr (mind. 5 Werte pro Monat).'],
+  ];
+  el.innerHTML = `<div class="grid">
+    ${card('Datenstand', `<div class="tw"><table>
+      <tr><td>HTML erzeugt</td><td>${RAW.generated.replace('T', ' ')} Uhr</td></tr>
+      <tr><td>Modelllauf</td><td>${RAW.models.run.replace('T', ' ')} Uhr</td></tr>
+      <tr><td>Zeitraum der Daten</td><td>${fdate(RAW.start, true)} – ${fdate(RAW.end, true)} (${N} Tage)</td></tr>
+      <tr><td>Tage mit HRV / Ruhepuls / Schlaf</td><td>${cnt('hrv')} / ${cnt('rhr')} / ${cnt('slDur')}</td></tr>
+      <tr><td>Aktivitäten / Wiegungen</td><td>${RAW.acts.length} / ${RAW.weights.length}</td></tr>
+      <tr><td>Hauttemperatur</td><td>${cnt('skinT') ? cnt('skinT') + ' Tage' : 'nicht vorhanden'}</td></tr>
+      <tr><td>Ferien</td><td>NRW laut Ferienordnung, ${RAW.holidays.length} Ferienabschnitte</td></tr>
+      <tr><td>Klausuren</td><td>${RAW.exams.map(e => fdate(e, false)).join(', ')}</td></tr>
+      ${RAW.demo ? '<tr><td>Hinweis</td><td class="bad">Demo-Daten (synthetisch)</td></tr>' : ''}
+      ${ENCRYPTED ? '<tr><td>Verschlüsselung</td><td>AES-256-GCM, Schlüssel per PBKDF2 (600.000 Runden) <button id="forget">Gemerktes Passwort hier löschen</button></td></tr>' : ''}
+    </table></div>`, 'Die Seite lädt nichts nach und verschickt keine Daten; Einstellungen werden nur lokal im Browser gespeichert (falls möglich).')}
+    ${card('Kennzahlen einfach erklärt', `<dl class="method">${items.map(([t, d]) => `<dt>${t}</dt><dd>${d}</dd>`).join('')}</dl>`)}
+  </div>`;
+  const fg = $('#forget');
+  if (fg) fg.onclick = () => { try { localStorage.removeItem('gdash.key'); } catch (e) { /* ok */ } fg.textContent = 'Gelöscht'; fg.disabled = true; };
+}
+
+/* ============================================================ Rahmen */
+function buildNav() {
+  $('#nav').innerHTML = '<div class="brand">Garmin-Dashboard</div>' + PAGES.map(p => `<a href="#${p.id}" data-id="${p.id}"><svg viewBox="0 0 24 24">${ICON[p.id]}</svg><span>${innerWidth >= 900 ? p.t : (p.s || p.t)}</span></a>`).join('');
+}
+function currentPage() { const id = location.hash.slice(1); return PAGES.find(p => p.id === id) || PAGES[0]; }
+function render() {
+  hideTip();
+  const p = currentPage();
+  document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('on', a.dataset.id === p.id));
+  $('#title').textContent = p.t;
+  document.title = p.t + ' · Garmin-Dashboard';
+  const el = $('#page');
+  try { p.r(el); } catch (e) { el.innerHTML = card('Fehler', `<p>Diese Seite konnte nicht gezeichnet werden: ${esc(e.message)}</p>`); console.error(e); }
+}
+function initControls() {
+  const r = $('#range'), cw = $('#customWrap'), f = $('#from'), t = $('#to');
+  r.value = state.range; f.min = t.min = D[0].d; f.max = t.max = D[N - 1].d;
+  f.value = state.from || D[Math.max(0, N - 183)].d; t.value = state.to || D[N - 1].d;
+  cw.style.display = state.range === 'custom' ? '' : 'none';
+  r.onchange = () => { state.range = r.value; store.set('range', state.range); cw.style.display = state.range === 'custom' ? '' : 'none'; if (state.range === 'custom') { state.from = f.value; state.to = t.value; } render(); };
+  const cust = () => { state.from = f.value; state.to = t.value; store.set('from', state.from); store.set('to', state.to); if (state.range === 'custom') render(); };
+  f.onchange = cust; t.onchange = cust;
+  const h = $('#tHol'), e = $('#tExam');
+  h.checked = state.hol; e.checked = state.exam;
+  h.onchange = () => { state.hol = h.checked; store.set('hol', state.hol); render(); };
+  e.onchange = () => { state.exam = e.checked; store.set('exam', state.exam); render(); };
+}
+let lastW = innerWidth, rt;
+addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (Math.abs(innerWidth - lastW) > 30) { const navMode = (lastW >= 900) !== (innerWidth >= 900); lastW = innerWidth; if (navMode) buildNav(); render(); } }, 200); });
+addEventListener('hashchange', () => { render(); scrollTo(0, 0); });
+buildNav(); initControls(); render();
+}
+
+/* ============================================================ Start / Entschlüsselung */
+(async () => {
+  const raw = JSON.parse(document.getElementById('data').textContent);
+  if (!raw.enc) { startApp(raw, false); return; }
+  const E = raw.enc, b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const lock = document.getElementById('lock'), msg = document.getElementById('lockMsg');
+  const decrypt = async key => JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name: 'AES-GCM', iv: b64(E.iv)}, key, b64(E.ct))));
+  const open = data => { lock.remove(); startApp(data, true); };
+  lock.style.display = 'flex';
+  if (!(window.crypto && crypto.subtle)) { msg.textContent = 'Dieser Browser kann die Daten nicht entschlüsseln. Bitte die https-Adresse in Chrome, Firefox oder Safari öffnen.'; return; }
+  let saved = null;
+  try { saved = localStorage.getItem('gdash.key'); } catch (e) { /* kein Speicher */ }
+  if (saved) {
+    msg.textContent = 'Entschlüssele …';
+    try { return open(await decrypt(await crypto.subtle.importKey('raw', b64(saved), 'AES-GCM', false, ['decrypt']))); }
+    catch (e) { try { localStorage.removeItem('gdash.key'); } catch (_) { /* ok */ } msg.textContent = ''; }
+  }
+  document.getElementById('lockPw').focus();
+  document.getElementById('lockForm').onsubmit = async ev => {
+    ev.preventDefault();
+    msg.textContent = 'Entschlüssele …';
+    try {
+      const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(document.getElementById('lockPw').value), 'PBKDF2', false, ['deriveKey']);
+      const key = await crypto.subtle.deriveKey({name: 'PBKDF2', hash: 'SHA-256', salt: b64(E.salt), iterations: E.iter}, base, {name: 'AES-GCM', length: 256}, true, ['decrypt']);
+      const data = await decrypt(key);
+      if (document.getElementById('lockRem').checked) {
+        try { const k = new Uint8Array(await crypto.subtle.exportKey('raw', key)); localStorage.setItem('gdash.key', btoa(String.fromCharCode(...k))); } catch (e) { /* ok */ }
+      }
+      open(data);
+    } catch (e) { msg.textContent = 'Falsches Passwort.'; }
+  };
+})();
+</script>
+</body>
+</html>
